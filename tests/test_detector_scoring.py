@@ -20,19 +20,19 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="Node runtime required for 
 
 @pytest.fixture(scope="module")
 def reference():
-    return json.loads((DETECTOR / "fixtures/reference_samples.json").read_text())
+    return json.loads((DETECTOR / "fixtures/reference_samples.json").read_text(encoding='utf-8'))
 
 
 @pytest.fixture(scope="module")
 def golden():
-    return json.loads((DETECTOR / "fixtures/original_expected.json").read_text())
+    return json.loads((DETECTOR / "fixtures/original_expected.json").read_text(encoding='utf-8'))
 
 
 def run_score(value, *, runner=None, cwd=None):
     completed = subprocess.run(
         [NODE, "--max-old-space-size=384", str(runner or DETECTOR / "score.mjs")],
         input=value if isinstance(value, str) else json.dumps(value),
-        capture_output=True, text=True, timeout=15, cwd=cwd,
+        capture_output=True, text=True, encoding="utf-8", timeout=15, cwd=cwd,
     )
     assert completed.stdout.count("\n") == 1
     result = json.loads(completed.stdout)
@@ -66,7 +66,7 @@ def test_original_module_exact_numeric_parity(scored, golden):
 
 
 def test_catalog_exact_ids_original_prompts_and_thresholds(reference, scored):
-    catalog = json.loads((DETECTOR / "catalog.json").read_text())
+    catalog = json.loads((DETECTOR / "catalog.json").read_text(encoding='utf-8'))
     assert catalog["source_commit"] == catalog["reference_version"] == COMMIT
     assert len(catalog["models"]) == 63 == len(scored["results"])
     assert {'gemini-3.5-flash-lite','kimi-k3.1-pro','minimax-m3.1-flash'} <= {m['id'] for m in catalog['models']}
@@ -165,7 +165,7 @@ def test_invalid_input_controlled_json_only_no_user_strings(value):
 
 
 def test_original_sources_and_binary_match_pinned_sha256():
-    provenance = json.loads((DETECTOR / "provenance.json").read_text())
+    provenance = json.loads((DETECTOR / "provenance.json").read_text(encoding='utf-8'))
     assert provenance["commit"] == COMMIT
     for row in provenance["files"]:
         upstream = row["upstream_path"]

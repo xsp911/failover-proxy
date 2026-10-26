@@ -74,7 +74,7 @@ class ModelMonitor:
 
     def _catalog(self):
         try:
-            result=json.loads((ROOT/'detector'/'catalog.json').read_text())
+            result=json.loads((ROOT/'detector'/'catalog.json').read_text(encoding='utf-8'))
             if not isinstance(result.get('models'),list) or not isinstance(result.get('challenges'),list):
                 return {}
             return result

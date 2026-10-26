@@ -3,3 +3,9 @@
 detector/upstream/** -whitespace
 detector/shared_detector.bin -whitespace -diff
 detector/fixtures/** -whitespace
+
+# Byte-identical provenance files must never undergo checkout CRLF conversion.
+detector/upstream/** -text
+detector/shared_detector.bin -text
+detector/LICENSE -text
+detector/fixtures/** -text

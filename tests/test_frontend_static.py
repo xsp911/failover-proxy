@@ -20,7 +20,7 @@ class Markup(HTMLParser):
 
 
 def test_static_interface_has_unique_contract_ids_and_local_resources():
-    html=(ROOT/'web/index.html').read_text();parsed=Markup();parsed.feed(html)
+    html=(ROOT/'web/index.html').read_text(encoding='utf-8');parsed=Markup();parsed.feed(html)
     assert len(parsed.ids)==len(set(parsed.ids))
     assert all(not u.startswith(('https:','http:','//')) for u in parsed.resources)
     assert {'tab-stats','tab-market','tab-detector','tab-detector-log','tab-pelican','tab-settings','journal-search','request-search','journal-detail'}<=set(parsed.ids)
@@ -29,7 +29,7 @@ def test_static_interface_has_unique_contract_ids_and_local_resources():
 
 
 def test_stylesheet_ready_to_serve_and_motion_accessibility():
-    css=(ROOT/'web/styles.css').read_text()
+    css=(ROOT/'web/styles.css').read_text(encoding='utf-8')
     assert '@import' not in css
     assert 'prefers-reduced-motion' in css and ':focus-visible' in css
     assert '.workspace-sidebar' in css and '.chart-tooltip' in css
@@ -57,6 +57,6 @@ asyncio.run(main())'''
 
 
 def test_scripts_do_not_store_credentials_in_browser():
-    source=(ROOT/'web/app.js').read_text()
+    source=(ROOT/'web/app.js').read_text(encoding='utf-8')
     assert 'localStorage' not in source and 'sessionStorage' not in source
     assert 'window.__' not in source

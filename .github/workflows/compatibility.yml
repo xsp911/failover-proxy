@@ -15,11 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
         python: ['3.12', '3.14']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -30,7 +30,7 @@ jobs:
       - name: Verify ready local UI without frontend build
         run: python tools/check-web.py
       - name: Python-only startup with Node absent
-        run: python -m pytest -q tests/test_frontend_static.py
+        run: python -m pytest -q tests/test_frontend_static.py tests/test_windows_encoding.py
       - name: Launcher, file locking, config and SVG security contracts
         run: python -m pytest -q tests/test_platform_launcher.py tests/test_platform_io.py tests/test_pelican_svg_security.py tests/test_pelican_smil_offsets.py
       - name: Native application authentication, config and key contracts
@@ -43,16 +43,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
           cache: pip
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
       - run: python -m pip install -r requirements.lock
       - name: Pinned binary integrity and original numerical parity
-        run: python -m pytest -q tests/test_detector_scoring.py
+        run: python -m pytest -q tests/test_detector_scoring.py tests/test_windows_encoding.py
