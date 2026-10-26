@@ -23,7 +23,7 @@ def svg(body,attrs=''):return '<svg xmlns="http://www.w3.org/2000/svg" '+attrs+'
  svg('<rect/>', 'viewBox="0 0 1e100 30"'),
  '<svg>'+('<g>'*51)+('</g>'*51)+'</svg>',
  '<svg>'+('<rect/>'*5001)+'</svg>',
-])
+], ids=['xxe', 'processing-instruction', 'script', 'foreign-object', 'external-image', 'data-use', 'event-handler', 'animate-href', 'animate-style', 'css-import', 'css-external-url', 'css-obfuscated-url', 'foreign-namespace', 'event-timing', 'oversized-viewbox', 'depth-limit', 'node-limit'])
 def test_unsafe_output_has_no_renderable_svg(payload):
     result=inspect_svg(payload,'CODE1234');assert result['svg'] is None and not result['checks']['safe_svg'] and result['error_kind'].startswith('pelican_')
 

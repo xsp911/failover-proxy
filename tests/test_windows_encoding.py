@@ -22,3 +22,13 @@ def test_pinned_artifacts_disable_checkout_text_conversion():
     result=subprocess.run(['git','check-attr','text','--',*names],cwd=ROOT,capture_output=True,text=True,encoding='utf8',check=True)
     assert len(result.stdout.splitlines())==len(names)
     assert all(line.endswith(': text: unset') for line in result.stdout.splitlines())
+
+
+def test_large_svg_payloads_have_short_explicit_pytest_ids():
+    tree=ast.parse((ROOT/'tests/test_pelican_svg_security.py').read_text(encoding='utf8'))
+    function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='test_unsafe_output_has_no_renderable_svg')
+    mark=function.decorator_list[0]
+    identifiers=next(k.value for k in mark.keywords if k.arg=='ids')
+    values=ast.literal_eval(identifiers)
+    assert len(values)==17 and len(values)==len(set(values))
+    assert all(isinstance(value,str) and 0<len(value)<80 for value in values)
