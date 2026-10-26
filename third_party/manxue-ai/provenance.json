@@ -1,0 +1,28 @@
+{
+  "repository": "https://github.com/w1196396546/manxue-ai",
+  "commit": "5da79674417dd0748682f09b7b7467efd1968ea8",
+  "license": "Apache-2.0",
+  "usage": "Architecture and task inspiration only; local modules independently implemented, no upstream server execution or automatic vision judging. One fixed scene, one explicit generation,300-second deadline.",
+  "reviewed_files": [
+    {
+      "path": "app/server.py",
+      "sha256": "0caa0e23679176f919bfffc7f02038cfea2045c4b85e175475e5f6e800f630dd"
+    },
+    {
+      "path": "app/render_frames.py",
+      "sha256": "89708d0e33f772dd2b5fca7f8ae1b330a0e9f5850f82d8b52fb36a1d5b65b6f4"
+    },
+    {
+      "path": "app/visual_review.py",
+      "sha256": "0abe5faf2d5287f0a8c2cada05692fb8c8a409354e062d89aaf2d44b4eb14937"
+    },
+    {
+      "path": "README.md",
+      "sha256": "8871e633ed4af527ccc9c3a6da91e8009a7f5db67f96fa2bc8fc0b01bda5fa84"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ]
+}

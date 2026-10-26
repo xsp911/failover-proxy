@@ -1,0 +1,5 @@
+# Vendored lm-detector sources must stay byte-identical to upstream so the
+# provenance SHA256 checks keep proving parity; their whitespace is upstream's.
+detector/upstream/** -whitespace
+detector/shared_detector.bin -whitespace -diff
+detector/fixtures/** -whitespace

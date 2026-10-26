@@ -1,0 +1,23 @@
+{
+  "icon_package": "lucide-static",
+  "version": "1.61.0",
+  "license": "ISC",
+  "embedding": "Selected trusted SVG symbols embedded into static HTML. No browser package/CDN calls.",
+  "icons": [
+    "chart-no-axes-combined",
+    "network",
+    "shield-check",
+    "scroll-text",
+    "feather",
+    "settings-2",
+    "arrow-right-left",
+    "chevrons-up-down",
+    "menu",
+    "log-out",
+    "search",
+    "x",
+    "arrow-up-right",
+    "triangle-alert",
+    "coins"
+  ]
+}

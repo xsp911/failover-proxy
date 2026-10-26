@@ -1,0 +1,20 @@
+const {chromium}=require('/tmp/failover-browser-check/node_modules/playwright');const fs=require('fs');
+(async()=>{
+ const credentials=Object.fromEntries(fs.readFileSync('/opt/failover-proxy/access.env','utf8').trim().split('\n').map(x=>{const n=x.indexOf('=');return [x.slice(0,n),x.slice(n+1)]}));
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const page=await browser.newPage({ignoreHTTPSErrors:true,viewport:{width:1440,height:1100}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('https://127.0.0.1:9097/');await page.locator('#username').fill(credentials.FP_ADMIN_USERNAME);await page.locator('#password').fill(credentials.FP_ADMIN_PASSWORD);await page.locator('#login-button').click();await page.locator('#app').waitFor({state:'visible'});
+ await page.locator('#tab-detector').click();await page.waitForFunction(()=>!document.querySelector('#detector-settings-fieldset').disabled);
+ if(await page.locator('#detector-enabled').isChecked())throw Error('Recurring paid monitoring unexpectedly enabled');
+ if(await page.locator('#detector-interval').inputValue()!=='30')throw Error('Default period wrong');
+ const targets=await page.locator('#detector-targets tr').count();if(targets!==3)throw Error('Not all current providers represented');
+ const result=await page.evaluate(async()=>{const r=await fetch('/admin/detector');return r.json()});
+ if(!result.available||result.settings.targets.length!==3||result.catalog.models.length!==60)throw Error('Detector data incomplete');
+ if(!result.catalog.models.some(m=>m.id==='deepseek-v4.1-flash-1017'))throw Error('Exact model reference missing');
+ await page.screenshot({path:'/home/xspider/failover-proxy/artifacts/detector-checks.png',fullPage:true});
+ await page.locator('#tab-detector-log').click();await page.locator('#detector-log-status').filter({hasText:'Обновлено'}).waitFor();
+ await page.screenshot({path:'/home/xspider/failover-proxy/artifacts/detector-journal.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.locator('#tab-detector').click();await page.screenshot({path:'/home/xspider/failover-proxy/artifacts/detector-mobile.png',fullPage:true});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2))throw Error('mobile horizontal overflow');
+ await page.locator('#logout').click();await page.locator('#login-view').waitFor({state:'visible'});if(errors.length)throw Error(errors.join(';'));
+ console.log('PASS live embedded detector catalogue60, targets3, monitoring OFF/30min, checks/log tabs, mobile, no JS errors/no paid probes');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

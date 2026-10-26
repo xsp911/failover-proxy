@@ -1,0 +1,5 @@
+# Optional example only. Replace hostname; review public DNS/TLS/network policy first.
+# Existing HTTP service and URL remain unchanged. Do not run this file automatically.
+proxy.example.invalid {
+    reverse_proxy 127.0.0.1:8843
+}

@@ -1,0 +1,62 @@
+{
+  "repository": "https://github.com/Ikaleio/lm-detector",
+  "commit": "4dcb4216151cbd5066d515297720130a9fd3b198",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 xqy2006",
+  "files": [
+    {
+      "upstream_path": "shared/shared-detector.ts",
+      "git_blob_sha1": "676daabd58cd235a3c7081b54ed8a3fddb452711",
+      "sha256": "2cf7e22d4db63d79bdf80573af96e8448202c92989b1b5b1a328a53e7527dcbd",
+      "bytes": 11447
+    },
+    {
+      "upstream_path": "shared/positional.ts",
+      "git_blob_sha1": "5b548a8e95ab143638ba1e872fb10b599cabc99f",
+      "sha256": "e2c72c352ac3c1120ff23891ec40fff9a652973345badb29a9ce389de9cfc28a",
+      "bytes": 4142
+    },
+    {
+      "upstream_path": "shared/fingerprint-core.js",
+      "git_blob_sha1": "db33e4c6d804fca9a40e50ffc8734d2da6fd0173",
+      "sha256": "f7a88e9b0141b0088608a2c86ba9f26cf6b916860e94c3c7f14028c94c165be7",
+      "bytes": 4933
+    },
+    {
+      "upstream_path": "shared/detector-codec.ts",
+      "git_blob_sha1": "1f112f3b0ef949ee7e76d979439af72e9960a074",
+      "sha256": "dc81fc16d94e7d4e34918142338bc810e07f42e0ddea32d5e229dced254addbb",
+      "bytes": 2563
+    },
+    {
+      "upstream_path": "LICENSE",
+      "git_blob_sha1": "ce5be481b5259e4df7a182d6df0b2f21661f21a6",
+      "sha256": "238afb57e498990742f84b9ce6167b4e256ac06104a9938ce953bc41c14bea51",
+      "bytes": 1064
+    },
+    {
+      "upstream_path": "data/shared_detector.bin",
+      "git_blob_sha1": "94649082c49cbfd615bb9896b0e17b78d0b082d0",
+      "sha256": "6a102f86c3f8a9aeeb052edfbdf5edf6f9e891ac6693129a4e007139c74861f6",
+      "bytes": 4597032
+    },
+    {
+      "upstream_path": "data/unified_bank.json",
+      "git_blob_sha1": "5eeec733d3d49dd4024ddfca94cd693e699ec96e",
+      "sha256": "167edd84bd310bf30775245672944e3201e5ae6b77c5aab40a516494f7cd39fd",
+      "bytes": 12732981
+    },
+    {
+      "upstream_path": "data/unified_reference.jsonl",
+      "git_blob_sha1": "cf2722e59ade7cafede82509622264d1b90f7ea5",
+      "sha256": "2cae0128bad60eb6eec55e547028ad6609535a88cc04258d2285a177fb55c200",
+      "bytes": 17265061
+    }
+  ],
+  "transformations": {
+    "algorithm": "Four shared source modules copied byte-for-byte; esbuild bundles reachable scoring code without minification. Type-only imports are erased.",
+    "bank": "Only schema,built_at and models[id,display_name,family,family_name,response_count] retained. Ranker owns all scoring arrays in unchanged shared_detector.bin.",
+    "challenges": "Exact first three environment-01 prompts from the deepseek-v4.1-flash-1017 reference record, empty system prompt.",
+    "fixture": "Only three text/expected_count sample fields retained; provider request metadata excluded. Self-reference samples demonstrate implementation parity, not held-out accuracy."
+  }
+}

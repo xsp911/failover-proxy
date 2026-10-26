@@ -1,0 +1,36 @@
+[Unit]
+Description=Standalone AI API Failover Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xspider
+Group=xspider
+WorkingDirectory=/home/xspider/failover-proxy
+Environment=FP_DATA_DIR=/opt/failover-proxy/data
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/xspider/failover-proxy/.venv/bin/python -m uvicorn proxy.app:create_app --factory --host 0.0.0.0 --port 9097 --workers 1 --no-proxy-headers --no-access-log --limit-concurrency 128 --timeout-keep-alive 5 --ssl-keyfile /opt/failover-proxy/tls/server.key --ssl-certfile /opt/failover-proxy/tls/server.crt
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/failover-proxy/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+MemoryMax=1G
+TasksMax=128
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

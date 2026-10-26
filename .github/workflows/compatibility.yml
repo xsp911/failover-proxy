@@ -1,0 +1,58 @@
+name: Compatibility
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-python:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install pinned Python dependencies
+        run: python -m pip install -r requirements.lock
+      - name: Compile launcher and backend
+        run: python -m compileall -q proxy tools/run-local.py
+      - name: Verify ready local UI without frontend build
+        run: python tools/check-web.py
+      - name: Python-only startup with Node absent
+        run: python -m pytest -q tests/test_frontend_static.py
+      - name: Launcher, file locking, config and SVG security contracts
+        run: python -m pytest -q tests/test_platform_launcher.py tests/test_platform_io.py tests/test_pelican_svg_security.py tests/test_pelican_smil_offsets.py
+      - name: Native application authentication, config and key contracts
+        run: python -m pytest -q tests/test_app.py tests/test_security.py tests/test_admin_account.py
+
+  # Optional backend scorer verification only; not a frontend build or launch prerequisite.
+  numerical-artifacts:
+    name: Optional numerical backend / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m pip install -r requirements.lock
+      - name: Pinned binary integrity and original numerical parity
+        run: python -m pytest -q tests/test_detector_scoring.py

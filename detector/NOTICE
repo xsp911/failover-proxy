@@ -1,0 +1,44 @@
+Embedded lm-detector scoring
+============================
+Upstream: https://github.com/Ikaleio/lm-detector
+Pinned git HEAD: 4dcb4216151cbd5066d515297720130a9fd3b198
+Copyright (c) 2026 xqy2006. MIT License; full text in LICENSE.
+
+upstream/{shared-detector.ts,positional.ts,fingerprint-core.js,detector-codec.ts}
+are byte-for-byte copies of the corresponding shared/ upstream files.
+shared_detector.bin is byte-for-byte upstream data/shared_detector.bin.
+provenance.json records upstream git blob SHA-1, SHA-256 and byte lengths.
+
+bank.json retains only schema, built_at and the model id, display_name,
+family, family_name, response_count fields from data/unified_bank.json.
+The unchanged binary contains all numeric ranker/reference arrays used by the
+shared scoring algorithm. Dropped bank fields cannot affect shared scoring.
+
+catalog.json contains exact IDs and three exact environment-01 challenge
+prompts, expected counts 218, 233, 247, from the first three samples of
+reference record 653ba610-1f33-40ab-93bc-d05685e87c70 in upstream
+ data/unified_reference.jsonl. Empty system prompt. The three response texts
+alone are retained in fixtures/reference_samples.json, not the raw dataset.
+Do not infer model aliases from provider-reported metadata.
+
+score.ts is a local stdin/stdout adapter. score.mjs bundles its reachable
+upstream scoring code with esbuild 0.25.12 (no minification). The adapter
+validates input, removes non-scoring metadata, maps a successful upstream
+ranking's absent decision to "ranked", looks up the exact target ID, emits
+only the documented compact response fields, and adds an explicit closed-set
+warning. It does not alter numerical features, ranking, calibration, sample
+acceptance or sequence-shape checks. It does not enable partial scoring.
+No provider client, server, original CLI, network code or runtime dependency
+is included. Type-only upstream imports are erased by esbuild.
+
+Closed-set probabilities are relative to the reference bank, not evidence
+establishing actual model identity. No open-set accuracy guarantee applies.
+The parity fixture is drawn from training references; it checks faithful
+implementation, not generalization. On Node v24.22.0 the original modules
+with the full original bank and the embedded bundle with the slim bank
+produced exactly equal scores and probabilities for all 63 models.
+fixtures/original_expected.json stores that original-module result.
+
+## Update 2026-10-25
+
+Upstream 4dcb4216151cbd5066d515297720130a9fd3b198 adds gemini-3.5-flash-lite, kimi-k3.1-pro and minimax-m3.1-flash (63 references total). The float codec now uses byte-grouped float32 storage; source decoder and artifact are updated together. Sequence-shape admission follows upstream OR rule (reject only when both signals exceed reference limits). Challenge prompts, expected counts and minimum-number thresholds remain unchanged. Exact independent original full-bank and embedded slim-bank parity verified on Node v24.22.0.

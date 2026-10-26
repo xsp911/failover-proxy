@@ -1,0 +1,9 @@
+{
+  "name": "failover-proxy-design-tools",
+  "private": true,
+  "description": "Pinned development-only design research and local SVG assets; no production Node requirement for the web UI",
+  "devDependencies": {
+    "lucide-static": "1.61.0",
+    "ui-ux-pro-max-cli": "2.15.0"
+  }
+}

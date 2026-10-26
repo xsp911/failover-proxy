@@ -1,0 +1,14 @@
+[project]
+name = "failover-proxy"
+version = "0.1.0"
+description = "Buffered OpenAI-compatible API failover gateway with private web administration"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "httpx>=0.28,<1", "cryptography>=44"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.25"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = [".", "tests"]

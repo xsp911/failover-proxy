@@ -1,0 +1,413 @@
+{
+  "source_commit": "4dcb4216151cbd5066d515297720130a9fd3b198",
+  "comparison": "Pinned original shared modules + full upstream bank vs embedded slim bank; self-reference parity, not held-out validation",
+  "node_version": "v24.22.0",
+  "prediction": "deepseek-v4.1-flash-1017",
+  "probability": 0.9999930549015217,
+  "probability_status": "reference_calibrated",
+  "target_probability": 0.9999930549015217,
+  "results": [
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "display_name": "deepseek-v4.1-flash-1017",
+      "probability": 0.9999930549015217,
+      "score": 4.728106752291255
+    },
+    {
+      "model": "deepseek-v4.1-flash",
+      "display_name": "deepseek-v4.1-flash",
+      "probability": 6.191151806404583e-06,
+      "score": 2.240005728520557
+    },
+    {
+      "model": "qwen3.8-omni-flash",
+      "display_name": "qwen3.8-omni-flash",
+      "probability": 6.674640908086807e-07,
+      "score": 1.7778812571939406
+    },
+    {
+      "model": "deepseek-v4-pro-0813",
+      "display_name": "deepseek-v4-pro-0813",
+      "probability": 2.0842773899220074e-08,
+      "score": 1.0586790319887687
+    },
+    {
+      "model": "deepseek-v4-pro",
+      "display_name": "deepseek-v4-pro",
+      "probability": 1.4418005172375541e-08,
+      "score": 0.9822189375895419
+    },
+    {
+      "model": "gpt-6-sol",
+      "display_name": "gpt-6-sol",
+      "probability": 7.797598264065402e-09,
+      "score": 0.8546928860600144
+    },
+    {
+      "model": "step-5-preview",
+      "display_name": "step-5-preview",
+      "probability": 7.694050858425964e-09,
+      "score": 0.8519193068529864
+    },
+    {
+      "model": "qwen3.8-flash",
+      "display_name": "qwen3.8-flash",
+      "probability": 7.355690392110986e-09,
+      "score": 0.8425885621340948
+    },
+    {
+      "model": "qwen3.8-max-0902",
+      "display_name": "qwen3.8-max-0902",
+      "probability": 5.865557648512682e-09,
+      "score": 0.7956214147011209
+    },
+    {
+      "model": "gpt-6-astra",
+      "display_name": "gpt-6-astra/6.1-sol",
+      "probability": 4.311376719980008e-09,
+      "score": 0.7317527281071018
+    },
+    {
+      "model": "qwen3.8-27b",
+      "display_name": "qwen3.8-27b",
+      "probability": 3.4541570145568206e-09,
+      "score": 0.6857602532308463
+    },
+    {
+      "model": "gemini-4-argon",
+      "display_name": "gemini-4-argon",
+      "probability": 2.533622475044247e-09,
+      "score": 0.6214583475743991
+    },
+    {
+      "model": "gpt-5.5",
+      "display_name": "gpt-5.5",
+      "probability": 1.8942214944289623e-09,
+      "score": 0.5611163210890846
+    },
+    {
+      "model": "grok-4.6",
+      "display_name": "grok-4.6",
+      "probability": 1.8836988616456786e-09,
+      "score": 0.559960567437028
+    },
+    {
+      "model": "mimo-v2.5",
+      "display_name": "mimo-v2.5",
+      "probability": 1.8406213366106425e-09,
+      "score": 0.5551608504034017
+    },
+    {
+      "model": "minimax-m3.1-flash",
+      "display_name": "minimax-m3.1-flash",
+      "probability": 9.106148302672515e-10,
+      "score": 0.40915379916510536
+    },
+    {
+      "model": "deepseek-v4-flash-0731",
+      "display_name": "deepseek-v4-flash-0731",
+      "probability": 8.557927399527946e-10,
+      "score": 0.39627140129622834
+    },
+    {
+      "model": "mimo-v2.6-flash",
+      "display_name": "mimo-v2.6-flash",
+      "probability": 7.1286895068677e-10,
+      "score": 0.3583596488702639
+    },
+    {
+      "model": "kimi-k2.8-preview",
+      "display_name": "kimi-k2.8-preview",
+      "probability": 5.736134609270423e-10,
+      "score": 0.31326698492867927
+    },
+    {
+      "model": "grok-4.5",
+      "display_name": "grok-4.5",
+      "probability": 4.806995720814695e-10,
+      "score": 0.2766036719016372
+    },
+    {
+      "model": "seed-2.1-turbo",
+      "display_name": "seed-2.1-turbo",
+      "probability": 3.9805797345708947e-10,
+      "score": 0.2374648776627037
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "display_name": "deepseek-v4-flash",
+      "probability": 3.885781921164722e-10,
+      "score": 0.23246409510885108
+    },
+    {
+      "model": "muse-spark-1.3",
+      "display_name": "muse-spark-1.3",
+      "probability": 2.6886123828961293e-10,
+      "score": 0.156051826520375
+    },
+    {
+      "model": "glm-5.3-flash",
+      "display_name": "glm-5.3-flash",
+      "probability": 2.5973493723808304e-10,
+      "score": 0.14888698700809355
+    },
+    {
+      "model": "grok-4.7",
+      "display_name": "grok-4.7",
+      "probability": 2.3250887574130038e-10,
+      "score": 0.12591277927057593
+    },
+    {
+      "model": "deepseek-v3.2",
+      "display_name": "deepseek-v3.2",
+      "probability": 2.1591734522364606e-10,
+      "score": 0.11055295381098754
+    },
+    {
+      "model": "glm-5.3",
+      "display_name": "glm-5.3",
+      "probability": 2.0829062305637307e-10,
+      "score": 0.10309192979057472
+    },
+    {
+      "model": "kimi-k3",
+      "display_name": "kimi-k3",
+      "probability": 1.470798037133455e-10,
+      "score": 0.030899672043323334
+    },
+    {
+      "model": "claude-fable-5.1",
+      "display_name": "claude-fable-5.1",
+      "probability": 1.3684362731440527e-10,
+      "score": 0.015933272618513357
+    },
+    {
+      "model": "glm-5.3-flashx",
+      "display_name": "glm-5.3-flashx",
+      "probability": 1.1440217671649929e-10,
+      "score": -0.02122911566772407
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "display_name": "gemini-3.6-flash",
+      "probability": 7.802429928637025e-11,
+      "score": -0.10062916507631
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "display_name": "gpt-5.6-sol",
+      "probability": 7.38789181687587e-11,
+      "score": -0.11195572094302307
+    },
+    {
+      "model": "mimo-v2.5-pro",
+      "display_name": "mimo-v2.5-pro",
+      "probability": 7.374125516762337e-11,
+      "score": -0.11234267925771207
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "display_name": "claude-sonnet-4.6",
+      "probability": 6.442597463962265e-11,
+      "score": -0.1403610418357185
+    },
+    {
+      "model": "muse-spark-1.2",
+      "display_name": "muse-spark-1.2",
+      "probability": 4.734506330210082e-11,
+      "score": -0.204274138042361
+    },
+    {
+      "model": "glm-5.2",
+      "display_name": "glm-5.2",
+      "probability": 3.919315615857437e-11,
+      "score": -0.24347840730174855
+    },
+    {
+      "model": "kimi-k3.1-pro",
+      "display_name": "kimi-k3.1-pro",
+      "probability": 3.2948013486115864e-11,
+      "score": -0.27948981832071185
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "display_name": "gemini-3.8-flash",
+      "probability": 3.057290304637189e-11,
+      "score": -0.29501233388683495
+    },
+    {
+      "model": "mimo-v2.6-pro",
+      "display_name": "mimo-v2.6-pro",
+      "probability": 2.8740772782808514e-11,
+      "score": -0.30783363867039154
+    },
+    {
+      "model": "claude-opus-4.6",
+      "display_name": "claude-opus-4.6",
+      "probability": 2.8097877183921487e-11,
+      "score": -0.31252725682611043
+    },
+    {
+      "model": "gpt-6-luna",
+      "display_name": "gpt-6-luna",
+      "probability": 2.6042734640986366e-11,
+      "score": -0.328285944522929
+    },
+    {
+      "model": "hy4-preview",
+      "display_name": "hy4-preview",
+      "probability": 2.5176010481708776e-11,
+      "score": -0.33530835097338313
+    },
+    {
+      "model": "gpt-5.4",
+      "display_name": "gpt-5.4",
+      "probability": 2.4567721236883087e-11,
+      "score": -0.34038276570185394
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "display_name": "gpt-5.6-terra",
+      "probability": 2.3493173565469508e-11,
+      "score": -0.3496617139151207
+    },
+    {
+      "model": "claude-opus-5.5",
+      "display_name": "claude-opus-5.5",
+      "probability": 2.2369629706634805e-11,
+      "score": -0.35982908960989646
+    },
+    {
+      "model": "gemini-3.7-flash",
+      "display_name": "gemini-3.7-flash",
+      "probability": 1.634582275728017e-11,
+      "score": -0.4249201197096597
+    },
+    {
+      "model": "gpt-4o",
+      "display_name": "gpt-4o",
+      "probability": 1.1078846690162091e-11,
+      "score": -0.5056137641934811
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "display_name": "gpt-5.6-luna",
+      "probability": 7.73324274768954e-12,
+      "score": -0.5802024028872095
+    },
+    {
+      "model": "claude-haiku-5.5",
+      "display_name": "claude-haiku-5.5",
+      "probability": 7.072616519769035e-12,
+      "score": -0.5987293212362461
+    },
+    {
+      "model": "claude-sonnet-5.5",
+      "display_name": "claude-sonnet-5.5",
+      "probability": 6.563543745248018e-12,
+      "score": -0.6142275544903091
+    },
+    {
+      "model": "claude-fable-5",
+      "display_name": "claude-fable-5",
+      "probability": 4.240024465725311e-12,
+      "score": -0.7048854920378321
+    },
+    {
+      "model": "seed-2.0-lite",
+      "display_name": "seed-2.0-lite",
+      "probability": 4.175151690813884e-12,
+      "score": -0.7080843901068056
+    },
+    {
+      "model": "claude-haiku-4.5",
+      "display_name": "claude-haiku-4.5",
+      "probability": 3.740019501441727e-12,
+      "score": -0.7309188905644457
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "display_name": "gemini-3.5-flash-lite",
+      "probability": 2.4153794623085087e-12,
+      "score": -0.8216334270717766
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "display_name": "gemini-3.1-pro-preview",
+      "probability": 1.9075612590767836e-12,
+      "score": -0.8706035533491971
+    },
+    {
+      "model": "muse-wonder",
+      "display_name": "muse-wonder",
+      "probability": 1.4372666325880427e-12,
+      "score": -0.9293356494755796
+    },
+    {
+      "model": "claude-opus-5",
+      "display_name": "claude-opus-5",
+      "probability": 6.558908481364613e-13,
+      "score": -1.0920994113941942
+    },
+    {
+      "model": "claude-opus-4.8",
+      "display_name": "claude-opus-4.8",
+      "probability": 5.468895822461442e-13,
+      "score": -1.1298071856021268
+    },
+    {
+      "model": "claude-sonnet-5",
+      "display_name": "claude-sonnet-5",
+      "probability": 3.182525901033919e-13,
+      "score": -1.2421336347532304
+    },
+    {
+      "model": "gemini-2.5-pro",
+      "display_name": "gemini-2.5-pro",
+      "probability": 2.8568811989229093e-13,
+      "score": -1.2645292842467557
+    },
+    {
+      "model": "seed-2.0-mini",
+      "display_name": "seed-2.0-mini",
+      "probability": 9.612949533772969e-14,
+      "score": -1.4905103119913865
+    },
+    {
+      "model": "claude-opus-4.7",
+      "display_name": "claude-opus-4.7",
+      "probability": 6.765449060704988e-14,
+      "score": -1.5633920976027564
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "display_name": "gemini-3.5-flash",
+      "probability": 4.5082600609847105e-14,
+      "score": -1.6476091739052365
+    }
+  ],
+  "used_outputs": 3,
+  "diagnostics": [
+    {
+      "index": 0,
+      "parsed_numbers": 218,
+      "minimum_numbers": 120,
+      "accepted": true,
+      "raw_out_of_range_count": 0
+    },
+    {
+      "index": 1,
+      "parsed_numbers": 233,
+      "minimum_numbers": 129,
+      "accepted": true,
+      "raw_out_of_range_count": 0
+    },
+    {
+      "index": 2,
+      "parsed_numbers": 247,
+      "minimum_numbers": 136,
+      "accepted": true,
+      "raw_out_of_range_count": 0
+    }
+  ]
+}

@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Failover Proxy · Панель управления</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23131923'/%3E%3Cpath d='M9 13h21l-5-5m5 5-5 5M31 27H10l5-5m-5 5 5 5' fill='none' stroke='%2363e1bd' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div id="boot" class="boot" role="status"><span class="spinner"></span> Подключение к панели…</div>
+  <section id="login-view" class="login-shell" hidden aria-labelledby="login-title">
+    <div class="login-story">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m16 3 4 4-4 4" />
+  <path d="M20 7H4" />
+  <path d="m8 21-4-4 4-4" />
+  <path d="M4 17h16" />
+</svg></span><div><strong>Failover Proxy</strong><span>НАДЁЖНОСТЬ ПО УМОЛЧАНИЮ</span></div></div>
+      <div class="login-intro"><div class="eyebrow">AI API Infrastructure</div><h1>Надёжность<br>каждого запроса.</h1><p>Управляйте поставщиками, переключайте резерв и наблюдайте за каждым запросом — без лишней сложности.</p></div>
+      <div class="route-preview" aria-hidden="true"><div><i class="status-dot"></i> Ваше приложение <span>/v1/chat/completions</span></div><span class="route-line"></span><div class="route-target"><span>01 <b>Основной</b></span><span>02 <b>Резервный</b></span><span>03 <b>Следующий</b></span></div></div>
+      <p class="login-foot">OpenAI-совместимый API · Полностью буферизованный ответ</p>
+    </div>
+    <div class="login-card panel"><span class="eyebrow">ЗАЩИЩЁННАЯ ПАНЕЛЬ</span><h2 id="login-title">Добро пожаловать</h2><p>Войдите с учётной записью администратора.</p>
+      <form id="login-form">
+        <label>Имя пользователя<input id="username" name="username" autocomplete="username" required maxlength="256" placeholder="admin"></label>
+        <label>Пароль<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="4096" placeholder="Введите пароль"></label>
+        <div id="login-error" class="notice danger" role="alert" hidden></div>
+        <button id="login-button" class="button primary wide" type="submit">Войти в панель <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7h10v10" />
+  <path d="M7 17 17 7" />
+</svg></button>
+      </form>
+      <p class="small login-security">Сессия хранится в cookie сервера. Секреты не сохраняются в хранилище браузера.</p>
+      <button id="session-retry" class="button subtle wide" type="button" hidden>Проверить существующую сессию</button>
+    </div>
+  </section>
+  <div id="app" class="app" hidden>
+    <a class="skip-link" href="#workspace-main">Перейти к содержимому</a>
+    <aside id="workspace-nav" class="workspace-sidebar" aria-label="Рабочее пространство">
+      <a href="#" class="brand" id="brand-link" aria-label="Failover Proxy — статистика"><span class="brand-mark"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m16 3 4 4-4 4" />
+  <path d="M20 7H4" />
+  <path d="m8 21-4-4 4-4" />
+  <path d="M4 17h16" />
+</svg></span><div><strong>Failover Proxy</strong><span>Панель управления</span></div></a>
+      <div class="workspace-switch"><span class="workspace-avatar">FP</span><div><strong>Рабочее пространство</strong><span>AI API Infrastructure</span></div><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m7 15 5 5 5-5" />
+  <path d="m7 9 5-5 5 5" />
+</svg></div>
+      <div class="nav-group-label">Управление</div>
+      <nav class="main-nav" aria-label="Раздел панели"><button id="tab-stats" class="nav-tab active" type="button" aria-current="page"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 16v5" />
+  <path d="M16 14.639V21" />
+  <path d="M20 10.656V21" />
+  <path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15" />
+  <path d="M4 18.463V21" />
+  <path d="M8 14.656V21" />
+</svg><span class="nav-copy"><strong>Статистика</strong><small>Обзор шлюза</small></span></button><button id="tab-market" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <rect x="16" y="16" width="6" height="6" rx="1" />
+  <rect x="2" y="16" width="6" height="6" rx="1" />
+  <rect x="9" y="2" width="6" height="6" rx="1" />
+  <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
+  <path d="M12 12V8" />
+</svg><span class="nav-copy"><strong>A6API</strong><small>Пулы каналов</small></span></button><button id="tab-detector" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+  <path d="m9 12 2 2 4-4" />
+</svg><span class="nav-copy"><strong>Проверки моделей</strong><small>Контроль качества</small></span><i id="detector-dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые настройки проверок"></i></button><button id="tab-detector-log" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15 12h-5" />
+  <path d="M15 8h-5" />
+  <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+  <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
+</svg><span class="nav-copy"><strong>Журнал проверок</strong><small>История изменений</small></span></button><button id="tab-pelican" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z" />
+  <path d="M16 8 2 22" />
+  <path d="M17.488 15H9" />
+</svg><span class="nav-copy"><strong>Пеликан</strong><small>Визуальная проба</small></span></button><button id="tab-settings" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 17H5" />
+  <path d="M19 7h-9" />
+  <circle cx="17" cy="17" r="3" />
+  <circle cx="7" cy="7" r="3" />
+</svg><span class="nav-copy"><strong>Настройки</strong><small>Конфигурация</small></span><i id="dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые изменения"></i></button></nav>
+      <div class="sidebar-bottom"><span class="mode-pill"><span class="status-dot"></span> Полный ответ · без live-токенов</span><p>Клиент получает только завершённый ответ. Failover остаётся внутри шлюза.</p><span class="sidebar-shortcut">Alt + 1–6 <span>Переключить раздел</span></span></div>
+    </aside>
+    <button id="nav-overlay" class="nav-overlay" type="button" aria-label="Закрыть навигацию" tabindex="-1"></button>
+    <header class="topbar"><div class="topbar-context"><button id="nav-toggle" class="icon-button nav-toggle" type="button" aria-label="Открыть навигацию" aria-controls="workspace-nav" aria-expanded="false"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 5h16" />
+  <path d="M4 12h16" />
+  <path d="M4 19h16" />
+</svg></button><div><span class="breadcrumb">Рабочее пространство / <strong id="active-page-title">Статистика</strong></span><p id="active-page-description">Состояние шлюза и фактический трафик</p></div></div><div class="topbar-right"><span id="health-badge" class="badge neutral">Проверка системы</span><span id="session-user" class="user-name"></span><button id="logout" class="button subtle small-button" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m16 17 5-5-5-5" />
+  <path d="M21 12H9" />
+  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+</svg><span>Выйти</span></button></div></header>
+    <main id="workspace-main" tabindex="-1">
+      <div id="global-notice" class="notice" role="status" aria-live="polite" hidden><span id="global-message"></span><button id="dismiss-notice" type="button" aria-label="Закрыть сообщение">×</button></div>
+      <section id="stats-view" aria-labelledby="stats-title">
+        <div class="page-heading"><div><h1 id="stats-title">Обзор шлюза</h1><p>Запросы, переключения и фактический расход ресурсов.</p></div><div class="period" role="group" aria-label="Период статистики"><button type="button" data-period="hour" aria-pressed="false">Час</button><button type="button" data-period="day" aria-pressed="true">Сутки</button><button type="button" data-period="week" aria-pressed="false">Неделя</button><button type="button" data-period="month" aria-pressed="false">Месяц</button></div></div>
+        <div class="section-meta"><span id="stats-status" role="status">Загрузка статистики…</span><div><span id="polling-status">Обновление каждые 15 секунд</span><button id="refresh-stats" class="icon-button" aria-label="Обновить статистику" type="button">↻</button></div></div>
+        <div id="stats-error" class="notice danger" role="alert" hidden></div>
+        <div id="stats-content" aria-busy="true">
+          <div class="metrics">
+            <article class="metric-card"><div class="metric-label">Клиентские запросы <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7h10v10" />
+  <path d="M7 17 17 7" />
+</svg></div><strong id="metric-requests">—</strong><span id="metric-success" class="metric-description">Итог каждого запроса</span></article>
+            <article class="metric-card red"><div class="metric-label">Итоговые ошибки <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+  <path d="M12 9v4" />
+  <path d="M12 17h.01" />
+</svg></div><strong id="metric-errors">—</strong><span class="metric-description">После всех попыток</span></article>
+            <article class="metric-card blue"><div class="metric-label">Переключения <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m16 3 4 4-4 4" />
+  <path d="M20 7H4" />
+  <path d="m8 21-4-4 4-4" />
+  <path d="M4 17h16" />
+</svg></div><strong id="metric-switches">—</strong><span class="metric-description">Переходы между поставщиками</span></article>
+            <article class="metric-card amber"><div class="metric-label">Всего токенов <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M13.744 17.736a6 6 0 1 1-7.48-7.48" />
+  <path d="M15 6h1v4" />
+  <path d="m6.134 14.768.866-.5 2 3.464" />
+  <circle cx="16" cy="8" r="6" />
+</svg></div><strong id="metric-tokens">—</strong><span class="metric-description">Только фактический usage</span></article>
+          </div>
+          <section class="panel activity-sources" aria-labelledby="activity-sources-title"><div class="panel-heading"><div><h2 id="activity-sources-title">Источники активности</h2><p class="small">Клиентский трафик и независимые проверки учитываются отдельно.</p></div><span id="activity-sources-status" class="small" role="status">Загрузка…</span></div><div id="activity-sources" class="activity-sources-grid"></div><p id="activity-sources-note" class="small">Отсутствие клиентского трафика не означает, что мониторинг простаивает. Окна учёта источников могут различаться; показатели не складываются.</p></section>
+          <details id="capability-evidence" class="panel"><summary>Наблюдения возможностей каналов и контекста</summary><p class="small">Только реальные уже выполненные запросы. Принятый max_tokens — не доказанный потолок. Оценка контекста приблизительная, запросы не блокирует.</p><button id="capability-refresh" class="button secondary" type="button">Загрузить наблюдения</button><div id="capability-results" class="small" aria-live="polite"></div></details>
+          <div class="chart-layout">
+            <section class="panel chart-panel"><div class="panel-heading"><div><h2>Активность запросов</h2><p class="small">Попытки к поставщикам за выбранный период</p></div><div class="legend"><span>Запросы</span><span>Ошибки</span><span>Переходы</span></div></div><div id="activity-chart" class="chart" role="img" aria-label="График активности"><div class="empty">Загрузка графика…</div></div><div id="chart-axis" class="chart-axis"></div></section>
+            <section class="panel"><div class="panel-heading"><div><h2>Потоки токенов</h2><p class="small">Вход, выход и кеш</p></div><span class="badge neutral">USAGE</span></div><div id="token-breakdown" class="token-breakdown"><div class="empty">Загрузка…</div></div><p class="small token-note">«—» означает, что поставщик не передал usage. Пропущенные значения не оцениваются.</p></section>
+          </div>
+          <section class="panel performance-panel"><div class="panel-heading"><div><h2>Время и производительность</h2><p class="small">Замеры шлюза, не сети до браузера</p></div><span class="badge neutral">BUFFERED</span></div><div id="performance" class="performance-grid"></div><details class="definitions"><summary>Как читать показатели</summary><p>TTFT поставщика — время до первых данных upstream. Первый ответ клиенту отправляется только после полной успешной генерации: токены не передаются в реальном времени. Ток/с — наблюдаемая скорость upstream, не гарантированная скорость модели. p50 / p95 — перцентили полной задержки.</p></details></section>
+          <div class="section-title"><div><h2>Поставщики</h2><p class="small">Меньше приоритет — раньше попытка</p></div><span class="small">Попытки ≠ клиентские запросы</span></div>
+          <section id="provider-stats" class="provider-grid" aria-label="Состояние поставщиков"><div class="empty panel">Загрузка поставщиков…</div></section>
+          <section class="panel table-panel"><div class="panel-heading"><div><h2>Детализация попыток</h2><p class="small">Каждое обращение к поставщику считается отдельно, включая неудачные повторы.</p></div></div><div class="table-scroll"><table><caption class="sr-only">Статистика попыток поставщиков</caption><thead><tr><th>Поставщик</th><th>Попытки</th><th>Успешные</th><th>Ошибки</th><th>Переходы</th><th>IN / OUT</th><th>Кеш чтение / запись</th><th>Успешность</th><th>Среднее, мс</th><th>TTFT, мс</th><th>Клиент, мс</th><th>Ток/с</th><th>p50 / p95, мс</th></tr></thead><tbody id="provider-table"></tbody></table></div></section>
+          <section class="panel table-panel"><div class="panel-heading"><div><h2>Последние запросы</h2><p class="small">Итоговый статус после всех попыток · без промптов и ответов</p></div></div><div class="table-toolbar"><label class="table-search"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" />
+</svg><input id="request-search" type="search" placeholder="Поиск по модели, поставщику или ID" aria-label="Поиск запросов"></label><select id="request-filter" aria-label="Статус запроса"><option value="all">Все статусы</option><option value="success">Успешные</option><option value="error">Ошибки</option></select><select id="request-sort" aria-label="Сортировка запросов"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="provider">По поставщику</option><option value="latency">По задержке</option></select><span id="request-count" class="small"></span></div><div class="table-scroll"><table><caption class="sr-only">Последние клиентские запросы</caption><thead><tr><th>Время</th><th>Модель</th><th>Статус</th><th>Попытки</th><th>Поставщик</th><th>Время, мс</th><th>IN / OUT</th><th>ID запроса</th></tr></thead><tbody id="requests-table"></tbody></table></div></section>
+          <div class="bottom-grid"><section class="panel"><div class="panel-heading"><h2>Последние ошибки</h2><span class="small">Без секретов</span></div><div id="recent-errors"><div class="empty">Загрузка…</div></div></section><section class="panel about-panel"><div class="panel-heading"><h2>Прозрачный учёт</h2><span class="status-dot"></span></div><p>Один клиентский запрос может вызвать несколько попыток у разных поставщиков. Ошибка попытки не означает ошибку итогового ответа.</p><p>Ответ полностью буферизуется. При неудаче промежуточные данные не уходят клиенту; следующий поставщик начинает заново.</p><p id="coverage-note" class="small">Информация о покрытии загружается…</p></section></div>
+        </div>
+      </section>
+      <section id="settings-view" hidden aria-labelledby="settings-title">
+        <div class="page-heading"><div><h1 id="settings-title">Настройки</h1><p>Поставщики, модели и ограничения одного API.</p></div><div class="heading-actions"><button id="reload-config" class="button secondary" type="button">Перезагрузить</button><button id="save-config" class="button primary" type="submit" form="config-form" disabled>Сохранить изменения</button></div></div>
+        <div id="config-state" class="section-meta" role="status">Загрузка конфигурации…</div>
+        <div id="config-error" class="notice danger" role="alert" hidden></div>
+        <div class="settings-layout"><nav class="settings-nav" aria-label="Настройки"><button type="button" data-settings="providers" aria-current="page">Поставщики <span id="provider-count">0</span></button><button type="button" data-settings="models">Модели <span id="model-count">0</span></button><button type="button" data-settings="general">Ограничения</button><button type="button" data-settings="keys">Ключи доступа <svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7h10v10" />
+  <path d="M7 17 17 7" />
+</svg></button><button type="button" data-settings="a6">A6API</button><button type="button" data-settings="account">Учётная запись</button><div class="sidebar-note"><span class="status-dot"></span><strong>Один протокол</strong><p>Только OpenAI Chat Completions. Полный ответ, без live-токенов.</p></div></nav>
+          <div class="settings-body">
+            <form id="config-form"><fieldset id="config-fieldset" disabled><legend class="sr-only">Конфигурация прокси</legend>
+              <section id="settings-providers" class="settings-section"><div class="section-title"><div><h2>Цепочка поставщиков</h2><p class="small">Укажите URL, ключ и порядок переключения. Политика OpenRouter — в дополнительных настройках карточки.</p></div><button id="add-provider" type="button" class="button secondary">+ Поставщик</button></div><div id="provider-editor" class="editor-stack"></div><div class="notice info"><strong>Тест проверяет только upstream /models.</strong> Успешная проверка не гарантирует доступность генерации. Для теста сначала сохраните поставщика.</div></section>
+              <section id="settings-models" class="settings-section" hidden><div class="section-title"><div><h2>Модели и маршруты</h2><p class="small">Клиент использует алиас, поставщик — свою модель.</p></div><button id="add-model" type="button" class="button secondary">+ Модель</button></div><div id="model-editor" class="editor-stack"></div></section>
+              <section id="settings-general" class="settings-section" hidden><div class="section-title"><div><h2>Ограничения и таймауты</h2><p class="small">Защита ресурсов и предсказуемое переключение.</p></div></div><div class="panel general-panel"><div id="general-fields" class="fields-grid"></div><div class="fixed-setting"><div><strong>Полная буферизация ответа</strong><p class="small">Фиксированный режим. Клиент получает только законченный успешный ответ.</p></div><span class="badge">Включена</span></div><label class="trust-setting"><input id="trust-private" type="checkbox"><span><strong>Разрешить приватные upstream-адреса</strong><span class="small">По умолчанию выключено. Включайте только для доверенной внутренней инфраструктуры; это ослабляет защиту от SSRF.</span></span></label></div></section>
+            </fieldset></form>
+            <section id="settings-keys" class="settings-section" hidden><div class="section-title"><div><h2>Ключи клиентского API</h2><p class="small">Отдельный доступ для каждого приложения.</p></div><button id="refresh-keys" class="button secondary" type="button">Обновить</button></div><div class="panel key-create-panel"><h3>Создать ключ</h3><form id="key-form"><div class="fields-grid"><label>Название<input id="key-name" name="name" required maxlength="160" placeholder="Например, приложение production"></label><div><span class="field-label" id="key-model-label">Доступ к моделям</span><div id="key-models" class="model-checkboxes" role="group" aria-labelledby="key-model-label"></div><p class="small">Ничего не выбрано — все модели, включая добавленные позже.</p></div></div><button id="create-key" class="button primary" type="submit">Создать ключ</button></form></div><div id="keys-error" class="notice danger" role="alert" hidden></div><div id="keys-list" class="editor-stack"><div class="panel empty">Загрузка ключей…</div></div><p class="small key-footnote">Полный токен показывается один раз. Здесь доступны только префиксы. Ключи не экспортируются и не сохраняются в браузере.</p></section>
+            <section id="settings-account" class="settings-section" hidden aria-labelledby="account-title">
+              <div class="section-title"><div><h2 id="account-title">Учётная запись администратора</h2><p class="small">Изменение логина и пароля входа в панель.</p></div></div>
+              <div class="notice warning">После сохранения все сессии администратора будут завершены. Потребуется войти снова. Существующие ключи клиентского API не изменятся.</div>
+              <div class="panel account-panel"><form id="account-form">
+                <div class="fields-grid">
+                  <label class="field-full">Текущий пароль<input id="account-current-password" name="current_password" type="password" autocomplete="current-password" required maxlength="1024"></label>
+                  <label class="field-full">Новый логин<input id="account-username" name="new_username" autocomplete="username" required maxlength="100"></label>
+                  <label>Новый пароль<input id="account-new-password" name="new_password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" aria-describedby="account-password-note"></label>
+                  <label>Повторите новый пароль<input id="account-confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" maxlength="1024"></label>
+                </div>
+                <p id="account-password-note" class="small">Новый пароль — не менее 12 символов. Оставьте оба поля нового пароля пустыми, чтобы сохранить текущий пароль и изменить только логин. Для смены только пароля оставьте текущий логин.</p>
+                <div id="account-error" class="notice danger" role="alert" hidden></div>
+                <div class="detector-actions"><button id="account-save" class="button primary" type="submit">Сохранить учётные данные</button></div>
+              </form></div>
+            </section>
+            <section id="settings-a6" class="settings-section" hidden><div class="section-title"><div><h2>A6API</h2><p class="small">PAT и ID аккаунта для Marketplace.</p></div><button id="a6-reload" class="button secondary" type="button">Перезагрузить</button></div>
+      <div class="notice warning"><strong>PAT — это пароль консоли.</strong> Он даёт доступ к аккаунту, токенам и пинам. Хранится зашифрованным на сервере; в браузере и журналах не сохраняется. Relay-ключ <code>sk-…</code> здесь не подходит.</div>
+      <div id="a6-error" class="notice danger" role="alert" hidden></div>
+      <section class="panel"><div class="panel-heading"><div><h2>Учётные данные</h2><p class="small">ID аккаунта — число из профиля кабинета, не relay-ключ.</p></div><span id="a6-badge" class="badge neutral">Не настроено</span></div>
+        <form id="a6-form"><div class="fields-grid">
+          <label class="field-full">PAT-ключ<input id="a6-pat" type="password" autocomplete="off" maxlength="512" placeholder="Вставьте PAT консоли"></label>
+          <label>ID аккаунта<input id="a6-user-id" type="number" min="1" max="2147483647" step="1" placeholder="23984"></label>
+        </div>
+        <p id="a6-pat-state" class="small"></p>
+        <div class="detector-actions"><button id="a6-save" class="button primary" type="submit">Сохранить</button><button id="a6-verify" class="button secondary" type="button">Проверить доступ</button><button id="a6-clear" class="button subtle" type="button">Удалить учётные данные</button></div>
+        <p id="a6-verify-result" class="small" role="status"></p>
+        </form>
+      </section>
+            </section>
+          </div>
+        </div>
+      </section>
+      <section id="pelican-view" class="workspace-view" hidden aria-labelledby="pelican-title">
+        <div class="page-heading"><div><h1 id="pelican-title">Пеликан</h1><p>Одна сцена, одна генерация, ручная оценка результата. Отдельно от проверок моделей и A6API.</p></div><button id="pelican-refresh" class="button secondary" type="button">Обновить</button></div>
+        <div class="notice info"><strong>Пеликан на велосипеде — морская набережная.</strong> Только эта фиксированная сцена. Структурные проверки SVG, анимации и маркера запроса не доказывают подлинность модели. Оцените изображение и движение самостоятельно.</div>
+        <div id="pelican-error" class="notice danger" role="alert" hidden></div>
+        <div class="section-meta"><span id="pelican-status" role="status">Откройте вкладку для загрузки.</span><span id="pelican-polling">Автообновление приостановлено</span></div>
+        <section class="panel pelican-panel pelican-composer"><div class="panel-heading"><div><h2>Новая генерация</h2><p class="small">Платный запрос напрямую выбранному поставщику. Без автоматических повторов и расписания.</p></div><span class="badge neutral">1 генерация · 5 минут</span></div>
+          <form id="pelican-form"><fieldset id="pelican-fields" disabled><legend class="sr-only">Параметры генерации пеликана</legend><div class="fields-grid pelican-fields">
+            <label>Поставщик<select id="pelican-provider" required></select></label><label>Upstream-модель<select id="pelican-model" required></select></label><label>Протокол<select id="pelican-protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></label><label>Уровень рассуждения · reasoning effort<select id="pelican-effort"><option value="">По умолчанию поставщика</option><option value="none">none · без рассуждений</option><option value="minimal">minimal · минимальный</option><option value="low">low · низкий</option><option value="medium">medium · средний</option><option value="high">high · высокий</option><option value="xhigh">xhigh · максимальный</option></select><span class="small">Поддержка зависит от модели. Высокий уровень может увеличить расход токенов; ожидание — до 5 минут.</span></label>
+            <label>Таймаут<input id="pelican-timeout" value="5 минут · 300 секунд" readonly></label>
+          </div><p class="small pelican-limits">До 16 000 выходных токенов; при high/xhigh — до 64 000, включая рассуждения. Это потолок, не фактическое списание. Одновременно — одна генерация. Первая версия: только ручной визуальный просмотр, без автоматической оценки качества.</p><div class="detector-actions"><button id="pelican-start" class="button primary" type="submit" disabled>Сгенерировать · 1 платный запрос…</button></div></fieldset></form>
+        </section>
+        <section class="panel pelican-panel pelican-gallery"><div class="panel-heading"><div><h2>Генерации</h2><p class="small">Статус и этап — не процент готовности. Предпросмотр появляется после получения безопасного SVG.</p></div></div><div id="pelican-runs" class="pelican-runs" aria-live="polite"><p class="empty">Генераций пока нет.</p></div></section>
+      </section>
+      <section id="market-view" class="workspace-view" hidden aria-labelledby="market-title">
+        <div class="page-heading"><div><h1 id="market-title">A6API</h1><p>Независимая политика для каждого пула, модели и токена. PAT — в Настройки → A6API.</p></div></div>
+        <div id="market-pools-panel">
+          <details class="a6-safety"><summary>Как работают проверки и ограничения</summary><p>Отбор продавцов бесплатный. Проверка отправляет платные запросы через отдельные тестовые ключи. Fingerprint оценивает сходство с эталоном, не доказывает подлинность. Публикация меняет рабочий маршрут; fallback выключен. Автоматический режим включается только явно.</p><div id="pools-capabilities" class="notice warning" role="status"></div></details>
+          <div id="pools-error" class="notice danger" role="alert" hidden></div>
+          <div class="section-meta"><span id="pools-status" role="status"></span><div><button id="pools-refresh" type="button" class="button secondary">Обновить</button><button id="pool-new" type="button" class="button primary">+ Создать пул</button></div></div>
+          <section class="panel"><h2>Ваши пулы</h2><p class="small">Выберите пул: состояние, результаты и действия появятся ниже. Выбор не запускает платных запросов.</p><div id="pools-list" class="pools-list"></div></section>
+          <nav id="pool-sections" class="pool-section-tabs" role="tablist" aria-label="Подразделы A6API"><button id="pool-section-tab-overview" type="button" role="tab" data-pool-section="overview" aria-controls="pool-section-overview" aria-selected="true">Обзор</button><button id="pool-section-tab-composition" type="button" role="tab" data-pool-section="composition" aria-controls="pool-section-composition" aria-selected="false">Состав</button><button id="pool-section-tab-checks" type="button" role="tab" data-pool-section="checks" aria-controls="pool-section-checks" aria-selected="false">Проверки</button><button id="pool-section-tab-automation" type="button" role="tab" data-pool-section="automation" aria-controls="pool-section-automation" aria-selected="false">Автоматизация</button><button id="pool-section-tab-settings" type="button" role="tab" data-pool-section="settings" aria-controls="pool-section-settings" aria-selected="false">Настройки</button></nav>
+          <div id="pool-section-overview" role="tabpanel" aria-labelledby="pool-section-tab-overview">
+          <section id="pool-details" class="panel pool-details" hidden><div class="panel-heading"><div><h2 id="pool-detail-name"></h2><p id="pool-detail-meta" class="small"></p></div><span id="pool-detail-status" class="badge neutral"></span></div><p id="pool-last-error" class="notice danger" hidden></p>
+            <ol class="pool-workflow" aria-label="Этапы работы"><li><strong>1. Выбор</strong><span>Выберите пул или найдите кандидатов. Без платной генерации.</span></li><li><strong>2. Проверка · платно</strong><span>Запустите проверку в пределах общего бюджета всех линий.</span></li><li><strong>3. Публикация</strong><span id="pool-workflow-publish">Вручную: предпросмотр, затем подтверждение.</span></li></ol><p id="pool-current-state" class="notice info" role="status"></p><p id="pool-worker-state" class="small"></p><div class="detector-actions pool-actions"><button id="pool-run" class="button primary" type="button">Запустить проверку</button><button id="pool-cancel" class="button secondary" type="button" hidden>Отменить проверку</button><button id="pool-discover" class="button secondary" type="button">Обновить список продавцов</button><button id="pool-preview" class="button secondary" type="button">Предпросмотр публикации</button><button id="pool-delete" class="button subtle" type="button">Удалить пул</button></div>
+
+          </section>
+          <section id="pool-preview-panel" class="panel pool-details" hidden><h2>Предпросмотр публикации</h2><p id="pool-preview-meta" class="small"></p><div id="pool-preview-diff" class="pool-preview-diff"></div><div id="pool-preview-warnings" class="notice warning" hidden></div><p id="pool-publish-reason" class="small"></p><div class="detector-actions"><button id="pool-publish" class="button primary" type="button" disabled>Опубликовать…</button></div></section>
+          </div>
+          <section id="pool-section-composition" class="panel pool-details" role="tabpanel" aria-labelledby="pool-section-tab-composition" hidden><h2>Состав пула</h2><p class="small">Участники уже опубликованы. Кандидаты подходят под ограничения; статус проверки не означает включение в рабочий маршрут.</p>
+            <h3>Участники</h3><div id="pool-members" class="table-scroll"></div><h3>Кандидаты</h3><div id="pool-candidates" class="table-scroll"></div></section>
+          <section id="pool-section-checks" role="tabpanel" aria-labelledby="pool-section-tab-checks" hidden><div class="panel pool-details"><h2>Проверки</h2><p class="small">Перезапуск отменит активное задание с очисткой маршрутов. Свежие успешные результаты сохраняются; бюджеты и суточные паузы не обходятся.</p><div class="detector-actions"><button id="pool-restart" class="button primary" type="button">Перезапустить проверку</button><button id="pool-verify" class="button secondary" type="button" title="Отдельная платная проверка без автоматической публикации, даже если автоматический режим включён">Проверить без публикации…</button></div></div>          <section class="panel pool-details"><h2>Последние задания выбранного пула</h2><div id="pool-jobs" aria-live="polite"></div></section><section class="panel pool-details"><details id="pool-membership-history"><summary>История состава</summary><p class="small">Изменения опубликованного состава из локального журнала. Чтение не запускает проверки или обращения к поставщикам.</p><div class="section-meta"><span id="pool-events-status" role="status">Выберите пул и откройте историю.</span><button id="pool-events-refresh" class="button secondary" type="button">Обновить историю</button></div><div id="pool-events" aria-live="polite"></div></details></section>
+</section>
+          <section id="pool-section-automation" class="panel pool-details" role="tabpanel" aria-labelledby="pool-section-tab-automation" hidden><h2>Автоматизация и расходы</h2>            <section aria-labelledby="pool-auto-title"><h3 id="pool-auto-title">Автоматический режим и бюджеты</h3><div id="pool-auto-state" aria-live="polite"></div><h3>Блокировки каналов</h3><p class="small">Канал блокируется после 4 ошибок. Инфраструктурные ошибки, исчерпание бюджета и отмена не увеличивают счётчик ошибок канала.</p><div id="pool-bans" aria-live="polite"></div></section></section>
+          <div id="pool-section-settings" role="tabpanel" aria-labelledby="pool-section-tab-settings" hidden>
+          <details id="pool-settings" class="panel pool-details" open><summary>Настройки пула <span id="pool-form-title" class="small">Новый пул</span></summary><form id="pool-form"><fieldset id="pool-fields"><legend class="sr-only">Политика пула</legend><div id="pool-policy-fields" class="fields-grid"></div>
+              <div class="pool-mode-options">
+                <label class="pool-mode-option"><input id="pool-enabled" type="checkbox"><span><strong>Включить пул</strong><span class="small">Разрешить обновление и работу этой политики.</span></span></label>
+                <label class="pool-mode-option"><input id="pool-auto-publish" type="checkbox"><span><strong>Автоматический режим</strong><span class="small">Отбор, проверка и публикация каждые 6 часов. Аудит участников — каждый час.</span></span></label>
+              </div>
+              <details class="pool-form-help"><summary>Как работают автоматизация и бюджеты</summary><p class="small">Автоматический режим выполняет платные запросы в пределах суточных и разовых бюджетов и изменяет рабочий маршрут этой модели. Для него нужно включить пул. Закрепления (pins) не используются, fallback выключен. Существующие пулы автоматически не включаются.</p></details>
+              <div class="detector-actions"><button id="pool-save" class="button primary" type="submit">Создать пул</button><button id="pool-reset" class="button secondary" type="button">Сбросить правки</button></div>
+            </fieldset></form><p id="pool-form-state" class="small" role="status"></p></details>
+          </div>
+        </div>
+      </section>
+      <section id="detector-view" class="workspace-view" hidden aria-labelledby="detector-title">
+        <div class="page-heading"><div><h1 id="detector-title">Проверки моделей</h1><p>Ручная проверка и отдельный мониторинг upstream-маршрутов.</p></div><button id="refresh-detector" class="button secondary" type="button">Обновить результаты</button></div>
+        <div id="detector-error" class="notice danger" role="alert" hidden></div><div id="detector-warning" class="notice warning" role="status" hidden></div>
+        <div class="section-meta"><span id="detector-status" role="status">Загрузка проверок…</span><span id="detector-polling">Обновление при открытой вкладке</span></div>
+        <section class="panel detector-panel"><div class="panel-heading"><div><h2>Мониторинг</h2><p class="small">По умолчанию выключен. Настройки независимы от ручных проверок.</p></div><span id="detector-threshold-badge" class="badge neutral">Порог —</span></div>
+          <div id="detector-settings-error" class="notice danger" role="alert" hidden></div><form id="detector-settings-form"><fieldset id="detector-settings-fieldset" disabled><legend class="sr-only">Настройки мониторинга моделей</legend><div class="detector-monitor-controls"><label class="toggle-label"><input id="detector-enabled" type="checkbox"> Включить мониторинг</label><label>Интервал, минуты<input id="detector-interval" type="number" min="5" max="1440" step="1" value="30" required></label><label>Порог совпадения, %<input id="detector-threshold" type="number" min="50" max="100" step="0.1" value="95" required></label><div><p id="detector-next-run" class="small"></p><p id="detector-settings-state" class="small" role="status"></p></div></div>
+          <p class="small">Добавьте нужные upstream-модели каждому поставщику. Пустая строка без эталона не включается в мониторинг. Можно добавить несколько целей. Отключённые вручную поставщики автоматически не включаются.</p>
+          <div class="table-scroll"><table class="detector-target-table"><caption class="sr-only">Цели мониторинга по поставщикам</caption><thead><tr><th>Поставщик / карантин</th><th>Upstream-модель</th><th>Ожидаемый эталон</th><th>Цели</th></tr></thead><tbody id="detector-targets"></tbody></table></div>
+          <div class="detector-actions"><button id="reload-detector-settings" class="button secondary" type="button">Перезагрузить настройки</button><button id="save-detector-settings" class="button primary" type="submit" disabled>Сохранить мониторинг</button></div></fieldset></form>
+        </section>
+        <section class="panel detector-panel"><div class="panel-heading"><div><h2>Ручная проверка</h2><p class="small">Не меняет настройки и не включает мониторинг. Обычно 3 платных запроса, максимум 18 с подтверждением и повторами.</p></div></div><div id="detector-check-error" class="notice danger" role="alert" hidden></div><form id="detector-check-form"><fieldset id="detector-check-fieldset" disabled><legend class="sr-only">Ручная проверка модели</legend><div class="fields-grid detector-manual-grid"><label>Поставщик<select id="detector-provider" required></select></label><label>Upstream-модель<input id="detector-model" type="text" list="detector-manual-models" placeholder="Любое имя upstream-модели" required maxlength="512"><datalist id="detector-manual-models"></datalist></label><label>Ожидаемый эталон<select id="detector-reference" required></select></label></div><button id="start-detector-check" class="button primary" type="submit">Проверить · обычно 3, до 18 платных запросов</button></fieldset></form></section>
+        <section class="panel table-panel detector-panel"><div class="panel-heading"><div><h2>Задания</h2><p class="small">До 3 поставщиков проверяются параллельно; у одного поставщика — по одному тесту. Прогресс 0–3 относится только к текущему раунду. Низкая оценка требует второго полного раунда. Диагностика содержит счётчики и виды ошибок, без текстов проб.</p></div></div><div id="detector-jobs" class="detector-job-list" aria-live="polite"></div></section>
+        <section class="panel table-panel detector-panel"><div class="panel-heading"><div><h2>Состояния маршрутов</h2><p class="small">Статус последней определённой проверки; последняя попытка и её ошибки — отдельно.</p></div></div><div class="table-scroll"><table><caption class="sr-only">Результаты проверок моделей</caption><thead><tr><th>Поставщик</th><th>Upstream-модель / эталон</th><th>Статус</th><th>Вероятность эталона</th><th>Предсказание / вероятность</th><th>Последняя попытка</th><th>Время</th></tr></thead><tbody id="detector-states"></tbody></table></div></section>
+        <p id="detector-catalog" class="small"></p>
+      </section>
+      <section id="detector-log-view" hidden aria-labelledby="detector-log-title"><div class="page-heading"><div><h1 id="detector-log-title">Журнал проверок</h1><p>Только изменения определённого статуса; последние 100 записей.</p></div><button id="refresh-detector-log" class="button secondary" type="button">Обновить журнал</button></div><div class="notice info">Повторные проверки с тем же статусом не записываются. Ошибки и неопределённые результаты не означают подмену и не меняют последний определённый статус. Вероятность закрытого набора — не доказательство подлинности.</div><div id="detector-log-error" class="notice danger" role="alert" hidden></div><p id="detector-log-status" class="small" role="status"></p><section class="panel table-panel detector-panel"><div class="table-toolbar"><label class="table-search"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" />
+</svg><input id="journal-search" type="search" placeholder="Поиск по поставщику, модели или причине" aria-label="Поиск в журнале"></label><select id="journal-filter" aria-label="Статус проверки"><option value="all">Все статусы</option><option value="verified">Проверены</option><option value="suspect">Ниже порога</option><option value="unknown">Не определены</option><option value="error">Ошибки</option></select><select id="journal-sort" aria-label="Сортировка журнала"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="provider">По поставщику</option></select><span id="journal-count" class="small"></span></div><div class="table-scroll"><table><caption class="sr-only">Изменения статусов проверок</caption><thead><tr><th>Время</th><th>Поставщик</th><th>Upstream-модель / эталон</th><th>Было</th><th>Стало</th><th>Вероятность эталона</th><th>Предсказание</th><th>Источник</th><th>Действия</th></tr></thead><tbody id="detector-log-rows"></tbody></table></div></section></section>
+    </main>
+    <footer class="footer"><span>Failover Proxy <span id="version"></span> · Purpose-built API gateway</span><span id="footer-health">Полная буферизация · Никаких промежуточных ответов</span></footer>
+  </div>
+  <dialog id="confirm-dialog" class="modal" aria-labelledby="confirm-title"><form method="dialog"><div class="modal-icon" aria-hidden="true">!</div><h2 id="confirm-title">Подтвердите действие</h2><p id="confirm-description"></p><div class="modal-actions"><button value="cancel" class="button secondary">Отмена</button><button id="confirm-action" value="confirm" class="button destructive">Удалить</button></div></form></dialog>
+  <dialog id="journal-detail" class="modal journal-modal" aria-labelledby="journal-detail-title"><div class="modal-heading"><h2 id="journal-detail-title">Детали проверки</h2><button id="journal-detail-close" class="icon-button" type="button" aria-label="Закрыть детали"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></button></div><div id="journal-detail-body"></div></dialog>
+  <dialog id="token-dialog" class="modal token-modal" aria-labelledby="token-title"><div class="eyebrow">СОХРАНИТЕ СЕЙЧАС</div><h2 id="token-title">Ключ создан</h2><p>Это единственный показ полного токена. Сохраните его в менеджере секретов. После закрытия восстановить ключ нельзя.</p><div class="token-box"><code id="new-token"></code></div><div id="copy-status" class="small" role="status"></div><div class="modal-actions"><button id="copy-token" class="button secondary" type="button">Копировать токен</button><button id="close-token" class="button primary" type="button">Сохранён, закрыть</button></div></dialog>
+  <noscript><div class="notice danger">Для работы панели необходим JavaScript. Включите его в настройках браузера.</div></noscript>
+</body>
+</html>
