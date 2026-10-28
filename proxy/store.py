@@ -431,6 +431,9 @@ class Store:
                    "total_ms": _number(record.get("total_ms")),
                    "client_ttft_ms": _number(record.get("client_ttft_ms", record.get("ttft_ms"))),
                    "error_kind": _kind(record.get("error_kind")),
+                   # The payload is a whitelist, not a copy: a field absent here never reaches
+                   # the table, and an operator then cannot tell one failure from another.
+                   "error_detail": _text(record.get("error_detail")) or None,
                    "key_id": _text(record.get("key_id")), **self._usage(record)}
         with self._connection() as conn:
             conn.execute("""INSERT INTO requests VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET
@@ -448,6 +451,9 @@ class Store:
                    "provider_id": _text(record.get("provider_id")), "status": status,
                    "http_status": _number(record.get("http_status"), integer=True),
                    "error_kind": _kind(record.get("error_kind")),
+                   # The payload is a whitelist, not a copy: a field absent here never reaches
+                   # the table, and an operator then cannot tell one failure from another.
+                   "error_detail": _text(record.get("error_detail")) or None,
                    **{field: _number(record.get(field)) for field in ("latency_ms", "ttft_ms", "generation_ms")},
                    **self._usage(record)}
         ordinal = _number(record.get("ordinal", record.get("attempt", record.get("attempt_number"))), integer=True)
@@ -578,6 +584,9 @@ class Store:
             providers.append({"id": provider_id, "name": provider_id or "Unknown provider", "priority": None,
                               "enabled": False, **self._finish_aggregate(metrics, provider_latencies.get(provider_id, []))})
         errors = [{"time": a["ts"], "kind": a["error_kind"], "status": a["http_status"],
+                   # The fixed diagnostic text: error_kind alone cannot tell a context overflow
+                   # from a stream abort when an operator reads the panel.
+                   "detail": a["error_detail"] if "error_detail" in a.keys() else None,
                    "provider": names.get(a["provider_id"], a["provider_id"] or "Unknown provider"),
                    "provider_id": a["provider_id"], "request_id": a["request_id"]} for a in error_rows]
         recent = [{"id": r["id"], "time": r["time"], "model": r["model"], "status": r["status"],
