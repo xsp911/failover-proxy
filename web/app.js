@@ -14,12 +14,13 @@
   const journal = { rows: [], search: '', filter: 'all', sort: 'newest', signature: '' };
   const requestsView = { search: '', filter: 'all', sort: 'newest', signature: '' };
   const pageLabels = {
-    stats: ['Обзор системы', 'Трафик, производительность и состояние маршрутизации'],
-    settings: ['Настройки', 'Поставщики, модели и безопасное управление доступом'],
-    detector: ['Проверки моделей', 'Мониторинг качества и ручные проверки поставщиков'],
-    'detector-log': ['Журнал событий', 'История изменений результатов проверок'],
-    market: ['Пулы A6API', 'Состав, проверки и публикация рабочих маршрутов'],
-    pelican: ['Пеликан', 'Одна генерация, наглядный результат, прозрачный контроль']
+    stats: ['Обзор шлюза', 'Запросы, переключения и фактический расход ресурсов.'],
+    settings: ['Шлюз', 'Поставщики, модели и ограничения одного API.'],
+    access: ['Доступ', 'Ключи клиентского API и учётная запись администратора.'],
+    detector: ['Проверки моделей', 'Ручная проверка и отдельный мониторинг upstream-маршрутов.'],
+    'detector-log': ['Журнал проверок', 'Только изменения определённого статуса; последние 100 записей.'],
+    market: ['A6API', 'Независимая политика для каждого пула, модели и токена. PAT — в подвкладке «Учётные данные».'],
+    pelican: ['Пеликан', 'Одна сцена, одна генерация, ручная оценка результата. Отдельно от проверок моделей и A6API.']
   };
   const settingDefs = [
     ['request_timeout_s', 'Общий таймаут запроса', 'Целые секунды · весь клиентский запрос, включая переключения.', 1, 1],
@@ -239,36 +240,104 @@
     } catch (error) { showLogin(error.status === 401 ? '' : 'Проверка сессии недоступна. Повторите проверку или войдите, когда сервер станет доступен.'); }
     finally { $('session-retry').disabled = false; }
   }
+  // Six sidebar entries. «Журнал проверок» and the A6 credentials are subsurfaces of
+  // «Проверки» and «A6API»: they keep their own state but are not top-level sections.
+  const navEntries = ['stats', 'settings', 'access', 'detector', 'market', 'pelican'];
+  const viewOfTab = { stats: 'stats', settings: 'settings', access: 'settings', detector: 'detector', 'detector-log': 'detector', market: 'market', pelican: 'pelican' };
+  const navEntryOf = tab => (tab === 'detector-log' ? 'detector' : tab);
+  const settingsGroups = { providers: 'gateway', models: 'gateway', general: 'gateway', keys: 'access', account: 'access', a6: 'market' };
+  function markNavigation(tab) {
+    const entry = navEntryOf(tab);
+    for (const name of navEntries) {
+      const button = $('tab-' + name), active = name === entry;
+      button.classList.toggle('active', active);
+      button.removeAttribute('aria-current');
+      if (active) button.setAttribute('aria-current', 'page');
+    }
+    const journal = $('tab-detector-log');
+    journal.classList.toggle('active', tab === 'detector-log');
+    journal.removeAttribute('aria-current');
+    if (tab === 'detector-log') { journal.setAttribute('aria-current', 'page'); $('tab-detector').removeAttribute('aria-current'); }
+  }
+  function activateDetectorSection(section) {
+    const log = section === 'log';
+    if ($('detector-heading')) $('detector-heading').hidden = log;
+    $('detector-monitor-panel').hidden = log;
+    $('detector-log-view').hidden = !log;
+  }
+  function activateMarketSection(section, syncPolling = true) {
+    const creds = section === 'creds';
+    pools.tab = creds ? 'creds' : 'pools';
+    $('market-pools-panel').hidden = creds;
+    $('market-creds-panel').hidden = !creds;
+    for (const [id, selected] of [['a6-tab-pools', !creds], ['a6-tab-creds', creds]]) {
+      $(id).setAttribute('aria-selected', String(selected)); $(id).tabIndex = selected ? 0 : -1;
+    }
+    if (creds) void loadA6();
+    if (syncPolling) updatePoolsPolling();
+  }
   function switchTab(tab) {
     state.tab = tab;
-    if ($('active-page-title')) text('active-page-title', pageLabels[tab]?.[0] || 'Failover Proxy');
-    if ($('active-page-description')) text('active-page-description', pageLabels[tab]?.[1] || '');
     setNavigationOpen(false);
     if ($('journal-detail')?.open && tab !== 'detector-log') $('journal-detail').close();
-    for (const name of ['stats', 'settings', 'detector', 'detector-log', 'market', 'pelican']) {
-      $(name + '-view').hidden = tab !== name;
-      $('tab-' + name).classList.toggle('active', tab === name);
-      if (tab === name) $('tab-' + name).setAttribute('aria-current', 'page');
-      else $('tab-' + name).removeAttribute('aria-current');
-    }
+    text('active-page-title', pageLabels[tab]?.[0] || 'Failover Proxy');
+    text('active-page-description', pageLabels[tab]?.[1] || '');
+    // The description is clamped to one line so the header height never jumps between pages.
+    $('active-page-description').title = pageLabels[tab]?.[1] || '';
+    const view = viewOfTab[tab];
+    for (const name of ['stats', 'settings', 'detector', 'market', 'pelican']) $(name + '-view').hidden = name !== view;
+    markNavigation(tab);
+    activateDetectorSection(tab === 'detector-log' ? 'log' : 'monitor');
+    // Both «Шлюз» and «Доступ» open the same configuration surface, on their own group.
+    if (tab === 'settings') activateSettings(settingsGroups[state.settingsTab] === 'gateway' ? state.settingsTab : 'providers', false);
+    if (tab === 'access') activateSettings(settingsGroups[state.settingsTab] === 'access' ? state.settingsTab : 'keys', false);
+    if (tab === 'market') activateMarketSection('pools', false);
     updatePolling();
     updateDetectorPolling();
     if (tab === 'settings' && !state.config && !state.configLoading) void loadConfig();
-    if (tab === 'settings' && state.settingsTab === 'keys') void loadKeys();
-    if (tab === 'market') pools.tab = 'pools';
+    // «Доступ» is a first-class entry point to the keys list (brief §6.4), so it loads
+    // the list and the model checkboxes exactly like the «Ключи доступа» subtab does.
+    if (tab === 'access') {
+      if (!state.config && !state.configLoading) void loadConfig();
+      renderKeyModels();
+      void loadKeys();
+    }
     updatePoolsPolling();
     updatePelicanPolling();
   }
   function activateSettings(tab, refresh = true) {
     state.settingsTab = tab;
+    const group = settingsGroups[tab] || 'gateway';
     for (const button of document.querySelectorAll('[data-settings]')) {
       if (button.dataset.settings === tab) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     }
     for (const name of ['providers', 'models', 'general', 'keys', 'a6', 'account']) $('settings-' + name).hidden = name !== tab;
-    $('config-form').hidden = ['keys', 'a6', 'account'].includes(tab);
+    $('config-form').hidden = group !== 'gateway';
+    // Save/reload belong to the configuration form only, never to keys or the account.
+    if ($('config-actions')) $('config-actions').hidden = group !== 'gateway';
+    const access = group === 'access';
+    text('settings-title', access ? 'Доступ' : 'Шлюз');
+    text('settings-subtitle', access ? 'Ключи клиентского API и учётная запись администратора.' : 'Поставщики, модели и ограничения одного API.');
+    if (group === 'market') {
+      if (state.tab !== 'market') {
+        state.tab = 'market';
+        for (const name of ['stats', 'settings', 'detector', 'market', 'pelican']) $(name + '-view').hidden = name !== 'market';
+        markNavigation('market');
+        text('active-page-title', pageLabels.market[0]);
+        text('active-page-description', pageLabels.market[1]);
+        $('active-page-description').title = pageLabels.market[1];
+        updatePolling(); updateDetectorPolling(); updatePelicanPolling();
+      }
+      activateMarketSection('creds');
+    } else if (state.tab === 'settings' || state.tab === 'access') {
+      state.tab = access ? 'access' : 'settings';
+      text('active-page-title', pageLabels[state.tab]?.[0] || '');
+      text('active-page-description', pageLabels[state.tab]?.[1] || '');
+      $('active-page-description').title = pageLabels[state.tab]?.[1] || '';
+      markNavigation(state.tab);
+    }
     if (refresh && tab === 'models' && state.draft) renderModels();
     if (refresh && tab === 'keys') { renderKeyModels(); void loadKeys(); }
-    if (refresh && tab === 'a6') void loadA6();
   }
 
   // Statistics. All server strings are text nodes; SVG uses DOM namespaces only.
@@ -438,7 +507,7 @@
     });
   }
   function renderTokens(summary) {
-    const definitions = [['Вход · IN', 'input_tokens', 'var(--green)'], ['Выход · OUT', 'output_tokens', 'var(--blue)'], ['Кеш · чтение', 'cache_read_tokens', 'var(--amber)'], ['Кеш · запись', 'cache_write_tokens', '#b89ff2']];
+    const definitions = [['Вход · IN', 'input_tokens', 'var(--chart-requests)'], ['Выход · OUT', 'output_tokens', 'var(--blue)'], ['Кеш · чтение', 'cache_read_tokens', 'var(--amber)'], ['Кеш · запись', 'cache_write_tokens', 'var(--chart-cache-write)']];
     const max = Math.max(1, ...definitions.map(([, key]) => Number(summary[key]) || 0));
     $('token-breakdown').replaceChildren(...definitions.map(([label, key, color]) => {
       const item = el('div'), heading = el('div', 'token-heading');
@@ -455,7 +524,13 @@
     if (label != null) node.textContent = String(label);
     return node;
   }
+  // Chart colours come from the component token layer, so the stylesheet stays the single source.
+  const cssToken = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   function renderChart(timeline) {
+    const color = {
+      requests: cssToken('--chart-requests'), errors: cssToken('--chart-errors'), switches: cssToken('--chart-switches'),
+      grid: cssToken('--grid-line'), axis: cssToken('--axis-label'), cursor: cssToken('--axis-label'), surface: cssToken('--panel')
+    };
     const chart = $('activity-chart');
     chart.setAttribute('role', 'group');
     if (chart.contains(document.activeElement) || chart.matches(':hover') && chart.querySelector('.chart-tooltip:not([hidden])')) return;
@@ -467,17 +542,18 @@
     const y = v => h - bottom - Math.max(0, Number(v) || 0) / max * (h - top - bottom);
     const svg = svgEl('svg', { viewBox: '0 0 ' + w + ' ' + h, preserveAspectRatio: 'none', role: 'group', 'aria-label': 'Активность запросов. Точки доступны с клавиатуры.' });
     const defs = svgEl('defs'), gradient = svgEl('linearGradient', { id: 'activity-fill', x1: 0, x2: 0, y1: 0, y2: 1 });
-    gradient.append(svgEl('stop', { offset: '0%', 'stop-color': '#63e1bd', 'stop-opacity': '.22' }), svgEl('stop', { offset: '100%', 'stop-color': '#63e1bd', 'stop-opacity': '0' }));
+    gradient.append(svgEl('stop', { offset: '0%', 'stop-color': color.requests, 'stop-opacity': '.22' }), svgEl('stop', { offset: '100%', 'stop-color': color.requests, 'stop-opacity': '0' }));
     defs.append(gradient); svg.append(defs);
     for (let index = 0; index <= 3; index++) {
       const value = max * index / 3;
-      svg.append(svgEl('line', { x1: left, x2: w, y1: y(value), y2: y(value), stroke: '#2c3948', 'stroke-dasharray': '3 6' }), svgEl('text', { x: left - 10, y: y(value) + 3, fill: '#8191a6', 'font-size': 10, 'text-anchor': 'end' }, number(value, true)));
+      svg.append(svgEl('line', { x1: left, x2: w, y1: y(value), y2: y(value), stroke: color.grid, 'stroke-dasharray': '3 6' }), svgEl('text', { x: left - 10, y: y(value) + 3, fill: color.axis, 'font-size': 12, 'text-anchor': 'end' }, number(value, true)));
     }
     const path = key => timeline.map((row, i) => (i ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(row[key]).toFixed(2)).join(' ');
     svg.append(svgEl('path', { d: path('requests') + ' L' + x(timeline.length - 1) + ' ' + (h - bottom) + ' L' + x(0) + ' ' + (h - bottom) + ' Z', fill: 'url(#activity-fill)' }));
-    for (const [key, color] of [['requests', '#63e1bd'], ['errors', '#f58e9c'], ['switches', '#7bbcf5']]) svg.append(svgEl('path', { d: path(key), stroke: color, fill: 'none', 'stroke-width': key === 'requests' ? 2 : 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }));
-    const cursor = svgEl('line', { class: 'chart-cursor', y1: top, y2: h - bottom, stroke: '#8492a6', 'stroke-dasharray': '4 4', visibility: 'hidden', 'pointer-events': 'none' });
-    const marker = svgEl('circle', { class: 'chart-point', r: 5, fill: '#63e1bd', stroke: '#fff', 'stroke-width': 2, visibility: 'hidden', 'pointer-events': 'none' });
+    // Three series differ by colour and by stroke pattern, so the trend survives colour-blind viewing.
+    for (const [key, dash] of [['requests', null], ['errors', '5 4'], ['switches', '1 3 6 3']]) svg.append(svgEl('path', { d: path(key), stroke: color[key], fill: 'none', 'stroke-width': key === 'requests' ? 2 : 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round', ...(dash ? { 'stroke-dasharray': dash } : {}) }));
+    const cursor = svgEl('line', { class: 'chart-cursor', y1: top, y2: h - bottom, stroke: color.cursor, 'stroke-dasharray': '4 4', visibility: 'hidden', 'pointer-events': 'none' });
+    const marker = svgEl('circle', { class: 'chart-point', r: 5, fill: color.requests, stroke: color.surface, 'stroke-width': 2, visibility: 'hidden', 'pointer-events': 'none' });
     const tooltip = el('div', 'chart-tooltip'); tooltip.id = 'activity-tooltip'; tooltip.hidden = true; tooltip.setAttribute('role', 'tooltip');
     const hide = () => { tooltip.hidden = true; cursor.setAttribute('visibility', 'hidden'); marker.setAttribute('visibility', 'hidden'); };
     const show = (row, i) => {
@@ -2154,8 +2230,8 @@
       const search = state.tab === 'detector-log' ? $('journal-search') : state.tab === 'stats' ? $('request-search') : null;
       if (search) { event.preventDefault(); search.focus(); }
     }
-    if (event.altKey && !event.ctrlKey && !event.metaKey && /^[1-6]$/.test(event.key)) {
-      const tabs = ['stats', 'market', 'detector', 'detector-log', 'pelican', 'settings'];
+    if (event.altKey && !event.ctrlKey && !event.metaKey && /^[1-7]$/.test(event.key)) {
+      const tabs = ['stats', 'settings', 'detector', 'detector-log', 'market', 'pelican', 'access'];
       event.preventDefault(); $('tab-' + tabs[Number(event.key) - 1])?.click();
     }
   });
@@ -2184,6 +2260,24 @@
   });
   $('tab-stats').addEventListener('click', () => switchTab('stats'));
   $('tab-settings').addEventListener('click', () => switchTab('settings'));
+  $('tab-access').addEventListener('click', () => switchTab('access'));
+  $('a6-tab-pools').addEventListener('click', () => activateMarketSection('pools'));
+  $('a6-tab-creds').addEventListener('click', () => activateMarketSection('creds'));
+  // Roving focus for the A6API tablist, matching the pool sections pattern below.
+  const marketTabs = ['pools', 'creds'];
+  for (const [index, section] of marketTabs.entries()) {
+    $('a6-tab-' + section).addEventListener('keydown', event => {
+      const step = { ArrowRight: 1, ArrowLeft: marketTabs.length - 1 }[event.key];
+      let next;
+      if (step) next = (index + step) % marketTabs.length;
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = marketTabs.length - 1;
+      else return;
+      event.preventDefault();
+      activateMarketSection(marketTabs[next]);
+      $('a6-tab-' + marketTabs[next]).focus();
+    });
+  }
   $('tab-detector').addEventListener('click', () => switchTab('detector'));
   $('tab-detector-log').addEventListener('click', () => switchTab('detector-log'));
   $('tab-market').addEventListener('click', () => switchTab('market'));
