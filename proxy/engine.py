@@ -24,6 +24,35 @@ class GatewayError(Exception):
         self.kind, self.status, self.retryable = kind, status, retryable
         self.detail = detail if detail is not None else diagnostic(kind)
 
+# finish_reason values that mean "the upstream finished on its own". A value outside this set
+# is only fatal when the choice carries no content and no tool calls: an upstream answered
+# HTTP 200 with a complete body and a reason outside the five-value whitelist, and the relay
+# graded the answer as broken and failed over. Novel labels keep arriving (end_turn,
+# max_tokens, eos, stop_sequence), so completeness is decided by the payload, not the vocabulary.
+FINISH_REASONS_OK = {"stop", "tool_calls", "function_call", "length", "content_filter",
+                     "end_turn", "max_tokens", "eos", "stop_sequence", "model_length"}
+
+# Errors whose own remedy is "resend the request": the stream had started (HTTP 200, SSE
+# began) and the upstream dropped it — A6API says so verbatim for
+# smart_route_stream_commit_failure, which classify() maps to upstream_sse_error. A provider
+# that aborted one stream is not a broken provider, and switching away drops the prompt cache.
+STREAM_ABORT_KINDS = {"upstream_sse_error", "incomplete_upstream_stream",
+                      "upstream_timeout", "upstream_connection"}
+
+
+def response_format_of(payload):
+    """The response_format type the client asked for, or None.
+
+    Passed to the classifier so a provider refusing structured output is reported as
+    `response_format_unsupported` instead of a vague 400 — but only when the client
+    actually asked for structured output.
+    """
+    value = payload.get("response_format") if isinstance(payload, dict) else None
+    if isinstance(value, dict):
+        kind = value.get("type")
+        return kind if isinstance(kind, str) else None
+    return None
+
 
 def banner(text):
     import re
@@ -62,13 +91,14 @@ class Completion:
     bytes: int = 0
     done: bool = False
     first_content_ms: float | None = None
+    response_format: str | None = None
     start: float = field(default_factory=time.monotonic)
 
     def add(self, item):
         if not isinstance(item, dict):
             raise GatewayError("invalid_upstream_response")
         if "error" in item:
-            raise GatewayError(*classify(item, 200))
+            raise GatewayError(*classify(item, 200, response_format=self.response_format))
         choices = item.get("choices")
         if not isinstance(choices, list):
             raise GatewayError("invalid_upstream_response")
@@ -119,8 +149,11 @@ class Completion:
                     saved["id"] = call["id"]
             reason = choice.get("finish_reason")
             if reason is not None:
-                if reason not in ("stop", "tool_calls", "function_call", "length", "content_filter"):
-                    raise GatewayError("invalid_finish_reason")
+                if reason not in FINISH_REASONS_OK:
+                    has_payload = bool(self.texts.get(index)) or any(
+                        key[0] == index for key in self.tools)
+                    if not has_payload:
+                        raise GatewayError("invalid_finish_reason")
                 self.finished[index] = reason
         if isinstance(item.get("usage"), dict):
             self.usage = item["usage"]
@@ -282,7 +315,13 @@ class Engine:
                 raise GatewayError("no_available_provider", 503)
             last_error = GatewayError("all_providers_failed", 503)
             async with asyncio.timeout(settings["request_timeout_s"]):
-                for route in routes[:settings["max_attempts"]]:
+                # One resend to the SAME provider before failing over: a mid-stream abort is
+                # the upstream's bad minute and its own documented cure is a retry. Switching
+                # instead drops the warm prompt cache and charges a provider that did not fail.
+                queue = list(routes[:settings["max_attempts"]])
+                resent = set()
+                while queue:
+                    route = queue.pop(0)
                     count += 1
                     p = providers[route["provider_id"]]
                     selected = p["id"]
@@ -303,7 +342,8 @@ class Engine:
                             event["http_status"] = response.status_code
                             if response.status_code != 200:
                                 diagnostic_payload = await read_error(response)
-                                raise GatewayError(*classify(diagnostic_payload, response.status_code))
+                                raise GatewayError(*classify(diagnostic_payload, response.status_code,
+                                                            response_format=response_format_of(payload)))
                             if response.headers.get('content-encoding','identity').lower() not in ('identity',''):
                                 raise GatewayError('compressed_upstream_response')
                             if payload.get("stream", False):
@@ -313,7 +353,8 @@ class Engine:
                                 if probe:
                                     from .probe_stream import ProbeCompletion
                                     collector = ProbeCompletion
-                                result = collector(model["name"], settings["max_response_bytes"], settings["max_buffer_events"], start=attempt_start)
+                                result = collector(model["name"], settings["max_response_bytes"], settings["max_buffer_events"], start=attempt_start,
+                                                   response_format=response_format_of(payload))
                                 await parse_sse(response, result)
                                 event.update(usage_values(result.usage))
                                 event["ttft_ms"] = result.first_content_ms
@@ -327,7 +368,7 @@ class Engine:
                                     result = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite_json")))
                                 except (ValueError, UnicodeDecodeError, RecursionError):
                                     raise GatewayError("invalid_upstream_json") from None
-                                self.validate_json(result, model["name"])
+                                self.validate_json(result, model["name"], response_format_of(payload))
                                 event.update(usage_values(result.get("usage")))
                         event["status"] = "success"
                         elapsed = (time.monotonic()-attempt_start)*1000
@@ -351,6 +392,10 @@ class Engine:
                         event["latency_ms"] = round((time.monotonic()-attempt_start)*1000, 2)
                         if event["status"] == "error":
                             event["error_kind"] = last_error.kind
+                            # The fixed diagnostic text, never the upstream's free-form body:
+                            # error_kind alone cannot tell a context overflow from a stream
+                            # abort when you read the attempts table.
+                            event["error_detail"] = last_error.detail
                         await asyncio.to_thread(self.store.record_attempt, event)
                         if self.capabilities is not None:
                             from .capability_observer import observe
@@ -360,9 +405,20 @@ class Engine:
                     if not last_error.retryable:
                         # Input/context rejection is not a provider outage.
                         raise last_error
-                    self.failures[selected] = self.failures.get(selected, 0) + 1
-                    if self.failures[selected] >= settings["failure_threshold"]:
-                        self.cooldowns[selected] = time.time() + settings["cooldown_s"]
+                    is_abort = (event.get("http_status") == 200
+                                and last_error.kind in STREAM_ABORT_KINDS)
+                    if is_abort and selected not in resent:
+                        # The stream had started and died; A6API's own remedy is a resend.
+                        resent.add(selected)
+                        queue.insert(0, route)
+                        await asyncio.sleep(2)
+                        continue
+                    if last_error.kind != "dns_failure":
+                        # dns_failure is this host's resolver, not the provider's health:
+                        # fail over if another resolves, but do not cool the provider down.
+                        self.failures[selected] = self.failures.get(selected, 0) + 1
+                        if self.failures[selected] >= settings["failure_threshold"]:
+                            self.cooldowns[selected] = time.time() + settings["cooldown_s"]
                 raise last_error
         except TimeoutError:
             final["error_kind"] = "request_deadline"
@@ -381,16 +437,21 @@ class Engine:
             await asyncio.to_thread(self.store.record_request, final)
 
     @staticmethod
-    def validate_json(result, model):
+    def validate_json(result, model, response_format=None):
         if isinstance(result, dict) and 'error' in result:
-            raise GatewayError(*classify(result,200))
+            raise GatewayError(*classify(result,200,response_format=response_format))
         if not isinstance(result, dict) or not isinstance(result.get("choices"),list) or not result["choices"]:
             raise GatewayError("invalid_upstream_response")
         for choice in result["choices"]:
             if not isinstance(choice, dict):
                 raise GatewayError("invalid_upstream_response")
-            if choice.get("finish_reason") not in ("stop","tool_calls","function_call","length","content_filter"):
-                raise GatewayError("incomplete_upstream_response")
+            if choice.get("finish_reason") not in FINISH_REASONS_OK:
+                message = choice.get("message")
+                has_payload = isinstance(message, dict) and (
+                    (isinstance(message.get("content"), str) and message["content"])
+                    or message.get("tool_calls"))
+                if not has_payload:
+                    raise GatewayError("incomplete_upstream_response")
             message = choice.get("message")
             if not isinstance(message,dict):
                 raise GatewayError("invalid_upstream_response")

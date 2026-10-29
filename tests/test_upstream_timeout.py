@@ -132,12 +132,15 @@ async def test_timeout_engine_fails_over_and_records_safe_kind(tmp_path, stream)
         result = await engine.generate({'model': MODEL, 'messages': [], 'stream': stream},
                                        store.get_config(True), 'timeout-test', 'key')
         output = b''.join(result.wire()).decode() if stream else json.dumps(result)
-        assert calls == ['p1.invalid', 'p2.invalid']
+        # LOCAL POLICY: an upstream_timeout delivered as a 200 SSE error event is a mid-stream
+        # abort, so the same provider gets one resend before the relay switches. A 500 answer
+        # never opened a stream and fails over immediately.
+        assert calls == (['p1.invalid', 'p1.invalid', 'p2.invalid'] if stream else ['p1.invalid', 'p2.invalid'])
         assert 'success' in output and 'partial-secret' not in output and SECRET not in output
         assert engine.cooldowns['1'] > time.time()
         stats = store.stats('hour')
-        assert stats['summary']['errors'] == 1 and stats['summary']['success'] == 1
-        assert stats['summary']['switches'] == 1
+        assert stats['summary']['errors'] == (2 if stream else 1) and stats['summary']['success'] == 1
+        assert stats['summary']['switches'] == (2 if stream else 1)
         assert stats['recent_errors'][0]['kind'] == 'upstream_timeout'
         assert stats['recent_errors'][0]['status'] == (200 if stream else 500)
         assert SECRET not in json.dumps(stats)
@@ -164,7 +167,9 @@ async def test_exhausted_timeout_routes_return_504_without_raw_body(tmp_path, st
         with pytest.raises(GatewayError) as error:
             await engine.generate({'model': MODEL, 'messages': [], 'stream': stream},
                                   store.get_config(True), 'timeout-test', 'key')
-        assert calls == ['p1.invalid', 'p2.invalid', 'p3.invalid']
+        # LOCAL POLICY: see the resend rule above — streamed timeouts retry the provider once.
+        assert calls == (['p1.invalid', 'p1.invalid', 'p2.invalid', 'p2.invalid', 'p3.invalid', 'p3.invalid']
+                         if stream else ['p1.invalid', 'p2.invalid', 'p3.invalid'])
         assert (error.value.kind, error.value.status, error.value.retryable) == ('upstream_timeout', 504, True)
         assert error.value.detail == d.DETAILS['upstream_timeout']
         assert SECRET not in str(error.value) + error.value.detail + json.dumps(store.stats('hour'))

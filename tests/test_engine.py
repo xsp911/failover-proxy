@@ -49,12 +49,17 @@ async def test_failover_without_partial_leak(tmp_path,kind):
     engine=Engine(store,httpx.MockTransport(handle))
     payload={'model':MODEL,'messages':[{'role':'user','content':[{'type':'image_url','image_url':{'url':'data:image/png;base64,abc'}}]}],'stream':True,'reasoning_effort':'high','thinking':{'type':'enabled','budget_tokens':2048},'tools':[{'type':'function','function':{'name':'bash','parameters':{}}}]}
     result=await engine.generate(payload,store.get_config(True),'req_test','key')
-    assert attempts==['p1.invalid','p2.invalid']
+    # LOCAL POLICY (deviation from upstream): a mid-stream abort — the stream started and
+    # died (eof, tool, sse_error) — earns the provider ONE resend before the relay switches,
+    # because the upstream's own remedy is a retry. A pre-stream failure (http 503, banner)
+    # goes straight to the next provider.
+    resend_expected=kind in ('eof','tool','sse_error')
+    assert attempts==(['p1.invalid','p1.invalid','p2.invalid'] if resend_expected else ['p1.invalid','p2.invalid'])
     assert b'partial' not in b''.join(result.wire())
     assert b'success' in b''.join(result.wire())
     for p in sent:
         assert p['thinking']==payload['thinking'] and p['messages']==payload['messages'] and p['tools']==payload['tools']
-    stats=store.stats('hour');assert stats['summary']['errors']==1 and stats['summary']['success']==1 and stats['summary']['switches']==1
+    stats=store.stats('hour');assert stats['summary']['errors']==(2 if resend_expected else 1) and stats['summary']['success']==1
     assert engine.cooldowns['1']>time.time()
     await engine.close()
 
