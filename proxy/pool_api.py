@@ -13,10 +13,21 @@ def routes(manager,session,body_json,error):
         return error(kind,getattr(exc,'status',400 if isinstance(exc,ValueError) else 502))
 
     @r.get('/admin/a6/pools')
-    async def listing(request:Request):
+    async def listing(request:Request,include_tokens:bool=True):
         await session(request)
-        try:return await manager.info()
+        try:return await manager.info() if include_tokens else await manager.info(include_tokens=False)
         except (PoolError,A6Error,ValueError) as e:return fail(e)
+
+    @r.get('/admin/a6/pools/tokens')
+    async def token_catalog(request:Request):
+        await session(request)
+        client=None
+        try:
+            client=manager.client()
+            return {'tokens':await client.tokens()}
+        except (PoolError,A6Error,ValueError) as e:return fail(e)
+        finally:
+            if client is not None:await client.close()
 
     @r.post('/admin/a6/pools')
     async def create(request:Request):

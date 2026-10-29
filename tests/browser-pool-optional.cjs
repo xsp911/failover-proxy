@@ -54,7 +54,7 @@ const prices = ['max_input_usd', 'max_output_usd', 'max_cache_read_usd', 'max_ca
       if (!await page.locator('#pool-settings').evaluate(node => node.open)) await page.locator('#pool-settings > summary').click();
     };
     const refresh = async () => {
-      const response = page.waitForResponse(r => r.url().endsWith('/admin/a6/pools') && r.request().method() === 'GET');
+      const response = page.waitForResponse(r => new URL(r.url()).pathname === '/admin/a6/pools' && r.request().method() === 'GET');
       await page.locator('#pools-refresh').click(); await response;
     };
     await page.goto('http://optional.invalid/');

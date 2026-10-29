@@ -11,7 +11,7 @@
   const providerEditors = new Set();
   const modelEditors = new Set();
   const proxyChecks = new Set();
-  const pools = { tab: 'pools', section: 'overview', data: null, selected: null, dirty: false, busy: false, loading: false, preview: null, timer: null, controller: null, sequence: 0 };
+  const pools = { tab: 'pools', section: 'overview', data: null, selected: null, creating: false, tokensLoaded: false, tokensLoading: false, tokensController: null, dirty: false, busy: false, loading: false, preview: null, timer: null, controller: null, sequence: 0 };
   const poolEvents = { id: null, data: null, loading: false, controller: null, sequence: 0 };
   const detector = { data: null, draft: null, dirty: false, saving: false, checking: false, timer: null, controller: null, sequence: 0, logController: null, logSequence: 0, cancelling: new Set() };
   const pelican = { data: null, timer: null, controller: null, sequence: 0, busy: false, mutationController: null, signingOut: false, actionError: '', cancelling: new Set(), motionNodes: new Map() };
@@ -168,6 +168,8 @@
     stopPolling();
     stopDetectorPolling();
     stopPoolsPolling();
+    if (pools.tokensController) pools.tokensController.abort();
+    pools.tokensController = null; pools.tokensLoaded = pools.tokensLoading = false;
     stopPelicanPolling();
     if (pelican.mutationController) pelican.mutationController.abort();
     pelican.mutationController = null; pelican.data = null; pelican.busy = false; pelican.actionError = ''; pelican.cancelling.clear(); pelican.motionNodes.clear();
@@ -179,7 +181,8 @@
     $('capability-results').replaceChildren(); $('capability-evidence').open=false; $('capability-refresh').disabled=false;
     for (const id of ['pools-list', 'pool-policy-fields', 'pool-jobs', 'pool-members', 'pool-candidates', 'pool-preview-diff', 'pool-auto-state', 'pool-bans']) $(id).replaceChildren();
     $('pool-details').hidden = $('pool-preview-panel').hidden = true;
-    pools.tab = 'pools'; pools.section = 'overview';
+    pools.tab = 'pools'; pools.section = 'overview'; pools.creating = false;
+    syncPoolSelectionView();
     $('a6-pat').value = '';
     a6Proxy.loaded = a6Proxy.dirty = false; a6Proxy.proxyId = null; a6Proxy.useProxy = false; proxyChecks.clear();
     $('a6-use-proxy').checked = false; $('a6-proxy-id').replaceChildren(); $('a6-proxy-id').disabled = true;
@@ -448,6 +451,59 @@
     text('sidebar-version', version || '—');
     text('footer-health', 'Активных запросов: ' + number(health.active_requests) + (health.queued_requests == null ? '' : ' · В очереди: ' + number(health.queued_requests)) + ' · Полная буферизация');
   }
+  function providerFailureLabel(kind, status) {
+    const labels = { upstream_http_402: 'Оплата или квота · HTTP 402', upstream_http_401: 'API-ключ отклонён · HTTP 401', upstream_http_403: 'Доступ запрещён · HTTP 403', upstream_http_429: 'Лимит запросов · HTTP 429', upstream_timeout: 'Поставщик не ответил вовремя', request_deadline: 'Истёк общий таймаут', upstream_connection: 'Нет соединения', dns_failure: 'Не удалось найти адрес', outbound_proxy_unavailable: 'Прокси недоступен', cancelled: 'Запрос отменён клиентом' };
+    return labels[kind] || (Number(status) >= 500 ? 'Сбой поставщика · HTTP ' + status : 'Ошибка запроса' + (status ? ' · HTTP ' + status : ''));
+  }
+  function renderProviderHealthCards(providers) {
+    const opened = new Set([...$('provider-stats').querySelectorAll('details[open]')].map(item => item.dataset.providerHealth));
+    $('provider-stats').replaceChildren(...providers.map(provider => {
+      const health = provider.health || {}, models = Array.isArray(health.models) ? health.models : [];
+      const last = health.last_attempt, error = health.last_error, recent = health.recent || {};
+      const failing = last?.status === 'error', payment = health.billing?.status === 'payment_required';
+      const cooldownAt = typeof provider.cooldown_until === 'number' ? provider.cooldown_until * 1000 : provider.cooldown_until;
+      const cooldown = cooldownAt != null && new Date(cooldownAt).getTime() > Date.now();
+      const suspect = models.some(row => row.status === 'suspect'), unverified = !models.length || models.some(row => !['verified', 'suspect'].includes(row.status));
+      let label = 'Нет запросов', tone = 'neutral';
+      if (!provider.enabled) label = 'Выключен';
+      else if (health.quarantined) { label = 'Карантин'; tone = 'danger'; }
+      else if (payment) { label = 'Оплата / квота'; tone = 'danger'; }
+      else if (failing) { label = Number(recent.consecutive_errors) >= 3 ? 'Повторные ошибки' : 'Ошибка запроса'; tone = 'danger'; }
+      else if (cooldown) { label = 'Пауза после сбоя'; tone = 'warning'; }
+      else if (last?.status === 'success') { label = 'Отвечает'; tone = 'success'; }
+      else if (last?.status === 'cancelled') { label = 'Запрос отменён'; tone = 'warning'; }
+      const card = el('article', 'panel provider-card provider-health-card health-' + tone); card.dataset.providerHealth = provider.id;
+      const head = el('div', 'provider-head'), name = el('div');
+      name.append(el('h3', '', provider.name), el('p', 'small', 'Приоритет ' + number(provider.priority)));
+      head.append(name, badge(label, tone)); card.append(head);
+      const rows = el('div', 'provider-health-lines');
+      const line = (title, value, style = '') => { const row = el('div', 'provider-health-line'); row.append(el('span', '', title), el('strong', style, value)); rows.append(row); };
+      line('Модель', suspect ? 'Не прошла проверку' : unverified ? 'Не подтверждена' : 'Прошла проверку', suspect ? 'health-text-danger' : unverified ? 'health-text-muted' : 'health-text-success');
+      line('Запросы', last ? (failing ? providerFailureLabel(last.error_kind, last.http_status) : last.status === 'success' ? 'Последний — успешный' : 'Последний — отменён') : 'Ещё не было', failing ? 'health-text-danger' : '');
+      line('Оплата', payment ? 'Требуется проверка оплаты/квоты' : 'Баланс неизвестен', payment ? 'health-text-danger' : 'health-text-muted');
+      card.append(rows);
+      const count = el('p', 'small provider-health-counts', 'За период: ' + number(provider.requests) + ' попыток · ' + number(provider.errors) + ' ошибок · ' + percent(provider.success_rate) + ' успеха');
+      card.append(count);
+      if (Number(recent.errors) > 0) card.append(el('p', 'small provider-health-recent', 'Последние 15 мин: ' + number(recent.errors) + ' ошибок из ' + number(recent.attempts) + ' попыток' + (Number(recent.consecutive_errors) >= 2 ? ' · подряд ' + number(recent.consecutive_errors) : '')));
+      const details = el('details', 'provider-health-details'); details.dataset.providerHealth = provider.id; details.open = opened.has(provider.id);
+      details.append(el('summary', '', 'Модели и причины'));
+      for (const model of models) {
+        const item = el('div', 'provider-model-evidence');
+        const status = model.status === 'suspect' ? 'Не прошла проверку' : model.status === 'verified' ? 'Прошла проверку' : model.status === 'unchecked' ? 'Не проверялась' : 'Результат не определён';
+        item.append(el('strong', '', model.model), el('p', 'small', status + ' · ' + date(model.checked_at)));
+        if (model.reference_model) item.append(el('p', 'small', 'Эталон: ' + model.reference_model));
+        if (model.error_kind) item.append(el('p', 'small', 'Последняя проверка: ' + detectorErrorKind(model.error_kind)));
+        details.append(item);
+      }
+      if (!models.length) details.append(el('p', 'small', 'Нет актуального результата проверки подключённых моделей.'));
+      if (health.quarantined) details.append(el('p', 'small', 'Мониторинг исключил поставщика из маршрутизации.'));
+      if (error) details.append(el('p', 'small', 'Последний сбой: ' + providerFailureLabel(error.error_kind, error.http_status) + ' · ' + date(error.ts)));
+      if (last) details.append(el('p', 'small', 'Последняя попытка: ' + date(last.ts)));
+      if (cooldown) details.append(el('p', 'small', 'Пауза до ' + date(cooldownAt)));
+      details.append(el('p', 'small', 'Fingerprint оценивает сходство, не доказывает подлинность. HTTP 402 — сигнал оплаты/квоты, не измерение остатка.'));
+      card.append(details); return card;
+    }));
+  }
   function renderStats(data) {
     const summary = data.summary || {};
     text('metric-requests', number(summary.final_requests, true));
@@ -472,26 +528,7 @@
       return item;
     }));
     const providers = Array.isArray(data.providers) ? [...data.providers].sort((a, b) => Number(a.priority) - Number(b.priority)) : [];
-    $('provider-stats').replaceChildren(...providers.map(provider => {
-      const card = el('article', 'panel provider-card');
-      const head = el('div', 'provider-head');
-      const name = el('div');
-      name.append(el('h3', '', provider.name), el('p', 'small', 'Приоритет ' + number(provider.priority)));
-      const cooldown = provider.cooldown_until != null && new Date(provider.cooldown_until).getTime() > Date.now();
-      head.append(name, badge(!provider.enabled ? 'ВЫКЛЮЧЕН' : cooldown ? 'ПАУЗА' : 'ГОТОВ', !provider.enabled ? 'neutral' : cooldown ? 'warning' : ''));
-      const counters = el('div', 'provider-counters');
-      for (const [label, value] of [['Попытки', provider.requests], ['Ошибки', provider.errors], ['Переходы', provider.switches]]) {
-        const item = el('div'); item.append(el('strong', '', number(value)), el('span', '', label)); counters.append(item);
-      }
-      const progress = el('div', 'provider-progress');
-      const title = el('div'); title.append(el('span', '', 'Успешность попыток'), el('span', '', percent(provider.success_rate)));
-      const track = el('div', 'track'), bar = el('span');
-      bar.style.width = Math.min(100, Math.max(0, Number(provider.success_rate) || 0)) + '%';
-      track.append(bar); progress.append(title, track);
-      card.append(head, counters, progress);
-      if (cooldown) card.append(el('p', 'small', 'Пауза до ' + date(provider.cooldown_until)));
-      return card;
-    }));
+    renderProviderHealthCards(providers);
     if (!providers.length) $('provider-stats').append(el('div', 'panel empty', 'Поставщиков пока нет. Добавьте первый в настройках.'));
     renderTable('provider-table', providers.map(p => [p.name, number(p.requests), number(p.success), number(p.errors), number(p.switches), number(p.input_tokens) + ' / ' + number(p.output_tokens), number(p.cache_read_tokens) + ' / ' + number(p.cache_write_tokens), percent(p.success_rate), number(p.avg_latency_ms), number(p.avg_ttft_ms), number(p.avg_client_ttft_ms), number(p.avg_tps), number(p.p50_ms) + ' / ' + number(p.p95_ms)]), 13, 'За этот период попыток пока нет.');
     renderRequests();
@@ -1285,6 +1322,11 @@
   function updatePoolsPolling() { stopPoolsPolling(); if (activePools()) void loadPools(); }
   function activateMarket() { pools.tab = 'pools'; updatePoolsPolling(); }
   const poolSections = ['overview', 'composition', 'checks', 'automation', 'settings'];
+  function syncPoolSelectionView() {
+    const active = !!pools.selected || pools.creating;
+    $('pool-sections').hidden = !active;
+    for (const key of poolSections) $('pool-section-' + key).hidden = !active || key !== pools.section;
+  }
   function setPoolSection(section, focus = false) {
     if (!poolSections.includes(section)) return;
     pools.section = section;
@@ -1294,17 +1336,54 @@
       const button = $('pool-section-tab-' + key);
       button.setAttribute('aria-selected', String(selected)); button.tabIndex = selected ? 0 : -1;
     }
-    if (section === 'settings') $('pool-settings').open = true;
+    if (section === 'settings') { $('pool-settings').open = true; if (pools.selected || pools.creating) void loadPoolTokens(); }
     if (section === 'checks' && $('pool-membership-history').open) void loadPoolEvents();
+    syncPoolSelectionView();
     if (focus) $('pool-section-tab-' + section).focus();
+  }
+  async function loadPoolTokens(force = false) {
+    if (!activePools() || pools.tokensLoading || pools.tokensLoaded && !force) return;
+    const epoch = state.epoch;
+    const controller = new AbortController();
+    pools.tokensLoading = true; pools.tokensController = controller;
+    text('pool-tokens-status', 'Загружаем токены A6API отдельно от списка пулов…');
+    try {
+      const data = await api('/admin/a6/pools/tokens', { signal: controller.signal, timeout: 35000 });
+      if (epoch !== state.epoch || pools.tokensController !== controller) return;
+      if (!Array.isArray(data.tokens)) throw new Error('Invalid token catalogue');
+      if (!pools.data) pools.data = {};
+      pools.data.tokens = data.tokens; pools.tokensLoaded = true;
+      for (const field of ['token_id', ...poolTestTokenFields]) {
+        const select = $('pool-' + field); if (!select) continue;
+        const selected = select.value, test = field !== 'token_id';
+        select.replaceChildren();
+        const empty = el('option', '', field.startsWith('test_token_id_') ? 'Не используется' : 'Выберите…'); empty.value = ''; select.append(empty);
+        for (const token of data.tokens) {
+          const option = el('option', '', token.name || 'Без названия'); option.value = String(token.id);
+          const conflict = (pools.data.pools || []).filter(p => p.id !== pools.selected?.id).some(p => test ? String(p.token_id) === option.value || poolTestTokenIds(p).some(t => String(t) === option.value) : poolTestTokenIds(p).some(t => String(t) === option.value));
+          option.disabled = token.status !== 1 || conflict;
+          if (option.disabled) option.textContent += token.status !== 1 ? ' · отключён' : ' · занят другим пулом';
+          select.append(option);
+        }
+        if (selected && !data.tokens.some(t => String(t.id) === selected)) { const missing = el('option', '', 'Недоступен: ' + selected); missing.value = selected; select.append(missing); }
+        select.value = selected;
+      }
+      text('pool-tokens-status', 'Токены загружены. Проверка доступности повторяется сервером при сохранении.');
+    } catch (error) {
+      if (epoch === state.epoch && error.name !== 'AbortError') text('pool-tokens-status', 'Токены не загружены. ' + errorMessage(error) + ' Нажмите «Обновить токены». Список пулов доступен.');
+    } finally {
+      if (epoch === state.epoch && pools.tokensController === controller) { pools.tokensLoading = false; pools.tokensController = null; }
+    }
   }
   async function loadPools(clearError = false) {
     if (!activePools() || pools.loading) return;
     const epoch = state.epoch, sequence = ++pools.sequence;
     pools.loading = true; pools.controller = new AbortController();
     try {
-      const data = await api('/admin/a6/pools', { signal: pools.controller.signal });
+      const data = await api('/admin/a6/pools?include_tokens=false', { signal: pools.controller.signal });
       if (epoch !== state.epoch || sequence !== pools.sequence) return;
+      if (data.tokens_included === false) data.tokens = pools.data?.tokens || [];
+      else if (Array.isArray(data.tokens)) pools.tokensLoaded = true;
       pools.data = data; if (clearError) areaError('pools-error', '');
       renderPools();
     } catch (error) {
@@ -1420,7 +1499,7 @@
   async function selectPool(policy) {
     if (pools.busy) return;
     if (pools.dirty && !await confirmAction('Отбросить правки пула?', 'Несохранённые правки этой политики будут потеряны.', 'Отбросить')) return;
-    pools.selected = policy; resetPoolEvents(); setPoolSection(policy ? 'overview' : 'settings'); $('pool-settings').open = !policy; invalidatePoolPreview(); renderPoolForm(policy || {}); renderPools();
+    pools.selected = policy; pools.creating = !policy; resetPoolEvents(); setPoolSection(policy ? 'overview' : 'settings'); $('pool-settings').open = !policy; invalidatePoolPreview(); renderPoolForm(policy || {}); renderPools();
   }
   function renderPools() {
     const data = pools.data || {}, policies = data.pools || [], caps = data.capabilities || {};
@@ -1439,9 +1518,9 @@
         if (latest.revision !== pools.selected.revision) { pools.selected = latest; invalidatePoolPreview(); renderPoolForm(latest); }
         else pools.selected = latest;
       }
-      if (!latest && !pools.busy) { pools.selected = null; invalidatePoolPreview(); if (!pools.dirty) renderPoolForm(); }
+      if (!latest && !pools.busy) { pools.selected = null; pools.creating = pools.dirty; invalidatePoolPreview(); if (!pools.dirty) renderPoolForm(); }
     }
-    renderPoolDetails(); renderPoolJobs(); updatePoolControls();
+    renderPoolDetails(); renderPoolJobs(); updatePoolControls(); syncPoolSelectionView();
     if (poolEvents.id !== null && poolEvents.id !== pools.selected?.id) resetPoolEvents();
     $('pool-events-refresh').disabled = !pools.selected || poolEvents.loading;
   }
@@ -1839,7 +1918,7 @@
     if (kind === 'delete' && !await confirmAction('Удалить пул?', 'Пул «' + selected.name + '»: автоматические проверки остановятся, активные задания будут отменены. Рабочий маршрут будет безопасно закрыт: без участников, fallback выключен. Только после подтверждения безопасного состояния удаляется локальная политика. Подписки, каналы и токены A6API не удаляются. Несохранённые правки будут потеряны.', 'Удалить пул')) return;
     if (epoch !== state.epoch || pools.selected?.id !== selected.id || pools.selected?.revision !== selected.revision || (pools.dirty && kind !== 'delete')) return;
     await poolMutation(() => api(poolPath(selected.id) + (kind === 'delete' ? '' : '/' + kind), { method: kind === 'delete' ? 'DELETE' : 'POST', body: kind === 'delete' ? { revision: selected.revision, confirm_remote: true } : ['verify', 'run', 'restart'].includes(kind) ? { confirm_cost: true } : {} }), () => {
-      if (kind === 'delete') { pools.selected = null; renderPoolForm(); }
+      if (kind === 'delete') { pools.selected = null; pools.creating = false; renderPoolForm(); }
       showNotice(kind === 'delete' ? 'Пул удалён. Автоматические проверки остановлены, рабочий маршрут безопасно закрыт. Подписки и токены не удалялись.' : kind === 'run' && selected.auto_publish === true && selected.enabled === true ? 'Автоматический запуск принят: проверка и публикация в пределах бюджетов.' : 'Задание принято. Публикация не выполнялась.');
     });
   }
@@ -1943,6 +2022,9 @@
       const data = await api('/admin/a6', { method: 'PUT', body: payload });
       if (epoch !== state.epoch) return;
       $('a6-pat').value = ''; renderA6(data, true);
+      if (pools.tokensController) pools.tokensController.abort();
+      pools.tokensController = null; pools.tokensLoaded = pools.tokensLoading = false;
+      if (pools.data) pools.data.tokens = [];
       showNotice('Учётные данные A6API сохранены.');
     } catch (error) { if (epoch === state.epoch) areaError('a6-error', errorMessage(error)); }
     finally { if (epoch === state.epoch) $('a6-save').disabled = false; }
@@ -2618,6 +2700,7 @@
   $('pool-events-refresh').addEventListener('click', () => void loadPoolEvents(true));
   $('pool-membership-history').addEventListener('toggle', () => { if ($('pool-membership-history').open) void loadPoolEvents(); });
   $('pool-new').addEventListener('click', () => void selectPool(null));
+  $('pool-tokens-refresh').addEventListener('click', () => void loadPoolTokens(true));
   $('pool-reset').addEventListener('click', async () => {
     if (pools.dirty && !await confirmAction('Сбросить правки пула?', 'Будет загружена последняя полученная ревизия политики.', 'Сбросить')) return;
     pools.selected = (pools.data?.pools || []).find(p => p.id === pools.selected?.id) || null;

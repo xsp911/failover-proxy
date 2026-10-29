@@ -357,6 +357,9 @@ def create_app(data_dir=None, transport=None):
         runtime=engine.runtime()
         for p in result.get("providers",[]):
             p.update(runtime.get(p["id"],{"cooldown_until":None}))
+        from .provider_health import enrich
+        monitor_info=await monitor.info()
+        await asyncio.to_thread(enrich,store,monitor_info,result)
         return result
 
     @app.get('/admin/a6/tokens')

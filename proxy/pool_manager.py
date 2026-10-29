@@ -84,12 +84,14 @@ class PoolManager:
         for j in jobs:j.cancel()
         if jobs:await asyncio.gather(*jobs,return_exceptions=True)
 
-    async def info(self):
-        client=self.client()
-        try:tokens=await client.tokens()
-        finally:
-            api_diagnostics=client.diagnostics() if hasattr(client,'diagnostics') else {}
-            await client.close()
+    async def info(self,include_tokens=True):
+        tokens=[];api_diagnostics={}
+        if include_tokens:
+            client=self.client()
+            try:tokens=await client.tokens()
+            finally:
+                api_diagnostics=client.diagnostics() if hasattr(client,'diagnostics') else {}
+                await client.close()
         policies=await asyncio.to_thread(self.db.list)
         for policy in policies:
             self.mark_reference_stale(policy)
@@ -100,10 +102,11 @@ class PoolManager:
             policy['billing']=await asyncio.to_thread(self.billing.stats,policy['id'],day=today())
             policy['billing'].update(day=today(),history_complete=False)
             policy['billing']['reconciliation']=await asyncio.to_thread(self.billing.pending_diagnostics,policy['id'])
-        for job in self.jobs.values():
+        jobs=[dict(job) for job in list(self.jobs.values())[-50:]]
+        for job in jobs:
             job['billing']=await asyncio.to_thread(self.billing.stats,job['pool_id'],job_id=job['id'])
         return {'pools':policies,'catalog':self.monitor.catalog.get('models',[]),
-            'tokens':tokens,'jobs':list(self.jobs.values())[-50:],'api_diagnostics':api_diagnostics,
+            'tokens':tokens,'tokens_included':include_tokens,'jobs':jobs,'api_diagnostics':api_diagnostics,
             'capabilities':{'automatic_mode_supported':True,'auto_refresh_hours':6,'auto_audit_hours':1,'ban_after_failures':4,'max_parallel_checks':4,'targeted_probe_verified':self.targeted_probe_verified,'route_caps_verified':self.route_caps_verified,
                 'warning':'Проверки используют отдельный тестовый токен с одно-канальным маршрутом и ценовыми caps; суффикс ключа запрещён, он обходит caps. Рабочие пины не меняются. Fingerprint — оценка сходства, не доказательство личности модели.'}}
 

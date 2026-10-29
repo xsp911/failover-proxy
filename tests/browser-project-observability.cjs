@@ -84,7 +84,7 @@ const origin = 'http://project-observability.invalid';
     const events = await page.locator('#pool-events').textContent();
     assert.match(events, /Добавлены ID: 55, 66/); assert.match(events, /удалены ID: 88/); assert.match(events, /job-a/); assert.doesNotMatch(events, /SECRET|<script>/);
     assert.equal(await page.locator('#pool-events img').count(), 0);
-    const polled = page.waitForResponse(response => response.url() === origin + '/admin/a6/pools');
+    const polled = page.waitForResponse(response => new URL(response.url()).pathname === '/admin/a6/pools');
     await page.evaluate(() => window.__runPoolPoll()); await polled;
     assert.equal(eventCalls, 1, 'normal pool polling does not refresh events');
     assert.equal(reportCalls, 1, 'hidden statistics do not fetch report');

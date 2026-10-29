@@ -69,6 +69,9 @@ const root = path.resolve(__dirname, '..');
     await page.goto('http://pools.invalid/');
     await page.locator('#app').waitFor({state: 'visible'});
     await page.locator('#tab-market').click();
+    assert.equal(await page.locator('#pool-sections').isVisible(), false);
+    assert.equal(await page.locator('#pool-form').isVisible(), false);
+    await page.locator('#pool-new').click();
     await openSettings();
     await page.locator('#pool-name').waitFor();
     assert.equal(await page.locator('#pool-auto-publish').isDisabled(), false);
@@ -144,7 +147,7 @@ const root = path.resolve(__dirname, '..');
     Object.assign(verifyJob, {phase: 'testing', current_channel_id: 55, current_supplier: candidate.supplier, search: {eligible_total: 30, attempted: 4, remaining: 26, target_members: 10, verified: 2, exhausted: false, cooldown_count: 3, cached_verified: 1}});
     // Register the response wait before clicking: every refresh is an offline mock.
     const refresh = async () => {
-      const response = page.waitForResponse(r => r.url().endsWith('/admin/a6/pools') && r.request().method() === 'GET');
+      const response = page.waitForResponse(r => new URL(r.url()).pathname === '/admin/a6/pools' && r.request().method() === 'GET');
       await page.locator('#pools-refresh').click(); await response;
     };
     policies[0].bans = Array.from({length: 10}, (_, i) => ({channel_id: 900 + i, failures: i === 0 ? 4 : 1, banned: i === 0, last_reason: 'Safe ban reason <img src=x>'}));

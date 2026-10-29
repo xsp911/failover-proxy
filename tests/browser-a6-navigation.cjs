@@ -95,11 +95,15 @@ const labels = ['Обзор', 'Состав', 'Проверки', 'Автома�
     };
     await page.goto(origin + '/');
     await page.locator('#app').waitFor({state: 'visible'});
-    const loaded = page.waitForResponse(response => response.url() === origin + '/admin/a6/pools');
+    const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/admin/a6/pools');
     await page.locator('#tab-market').click(); await loaded;
     await page.locator('.pool-card').first().waitFor();
     assert.equal(requests.filter(request => request.path === '/admin/a6/pools').length, 1, 'main A6API tab loads pools directly');
     for (const id of ['market-sellers-tab', 'market-pools-tab', 'market-sellers-panel', 'market-form', 'market-token', 'market-rows', 'market-refresh']) assert.equal(await page.locator('#' + id).count(), 0, id + ' obsolete seller navigation removed');
+    assert.equal(await page.locator('#pool-sections').isVisible(), false, 'no pool context before explicit selection');
+    assert.equal(await page.locator('#pool-form').isVisible(), false, 'new pool form does not open automatically');
+    await page.locator('#pools-refresh').click();
+    assert.equal(await page.locator('#pool-form').isVisible(), false, 'refresh does not start creation');
     await page.locator('.pool-card').first().click();
     await assertSection('overview');
     assert.equal(writes.length, 0, 'opening pools and selecting a pool are free');
@@ -142,7 +146,7 @@ const labels = ['Обзор', 'Состав', 'Проверки', 'Автома�
     await tab('composition').click(); await tab('automation').click(); await tab('settings').click();
     assert.equal(await page.locator('#pool-name').inputValue(), 'Unsaved navigation edit');
     await tab('checks').click();
-    const polled = page.waitForResponse(response => response.url() === origin + '/admin/a6/pools');
+    const polled = page.waitForResponse(response => new URL(response.url()).pathname === '/admin/a6/pools');
     await page.evaluate(() => window.__runScheduledPoolPoll()); await polled;
     await assertSection('checks');
     await tab('settings').click();

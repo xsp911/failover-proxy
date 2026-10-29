@@ -70,7 +70,7 @@ const root = path.resolve(__dirname, '..');
     const consent = () => page.locator('#confirm-action').click();
     const waitRevision = n => page.waitForFunction(n => document.querySelector('#pool-form-state').textContent.includes('Ревизия ' + n + ' ·'), n);
     const refresh = async () => {
-      const response = page.waitForResponse(r => r.url().endsWith('/admin/a6/pools') && r.request().method() === 'GET');
+      const response = page.waitForResponse(r => new URL(r.url()).pathname === '/admin/a6/pools' && r.request().method() === 'GET');
       await page.locator('#pools-refresh').click(); await response;
     };
     assert.equal(await page.locator('#pool-auto-publish').isDisabled(), false);

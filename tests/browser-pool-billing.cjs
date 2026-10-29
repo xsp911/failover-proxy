@@ -40,7 +40,7 @@ const root = path.resolve(__dirname, '..');
     await page.locator('.pool-card').click();
     await page.locator('#pool-section-tab-automation').click();
     const refresh = async () => {
-      const response = page.waitForResponse(response => response.url().endsWith('/admin/a6/pools'));
+      const response = page.waitForResponse(response => new URL(response.url()).pathname === '/admin/a6/pools');
       await page.locator('#pools-refresh').click(); await response;
       await page.waitForFunction(expected => document.querySelector('#pool-auto-state .pool-billing').textContent.includes(expected), policy.billing ? 'Фактически списано (журнал A6API): $' + policy.billing.actual_cost_usd.toFixed(6) : 'Фактические списания пока не загружены');
     };
@@ -87,7 +87,7 @@ const root = path.resolve(__dirname, '..');
     const body = await page.locator('body').textContent();
     assert.doesNotMatch(body, /SECRET_BILLING_NEVER_RENDER|SECRET_TOKEN_NEVER_RENDER/);
     assert.deepEqual(errors, []); assert.deepEqual(unexpected, []);
-    assert.ok(requests.some(request => request.url.endsWith('/admin/a6/pools')));
+    assert.ok(requests.some(request => new URL(request.url).pathname === '/admin/a6/pools'));
     for (const request of requests) {
       assert.equal(new URL(request.url).origin, 'http://pool-billing.invalid');
       assert.equal(request.method, 'GET', 'billing render must not create paid/API mutation requests');
