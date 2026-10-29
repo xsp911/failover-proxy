@@ -95,7 +95,10 @@ def classify(payload, status, response_format=None):
         # fix it only by changing the request.
         return "response_format_unsupported", 400, False, DETAILS["response_format_unsupported"]
     kind = "upstream_sse_error" if status == 200 else "upstream_http_" + str(status)
-    retryable = status == 200 or status in (401,403,408,409,425,429) or status >= 500
+    # 402 joins 401/403: a balance or entitlement refusal belongs to ONE provider's
+    # account, and every other route carries its own. Without it a spent key silently
+    # turned the whole lane into "error" with zero failovers — 137 refusals in a row.
+    retryable = status == 200 or status in (401,402,403,408,409,425,429) or status >= 500
     public_status = 502 if status == 200 or status not in (400,413,422,429) else status
     return kind, public_status, retryable, diagnostic(kind)
 

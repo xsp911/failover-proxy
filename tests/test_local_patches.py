@@ -127,3 +127,16 @@ async def test_a_failed_attempt_records_error_detail(tmp_path):
         assert rows[0].get('detail'), 'an attempt without error_detail cannot be diagnosed'
     finally:
         await engine.close()
+
+@pytest.mark.parametrize("status", [401, 402, 403, 429, 500, 503])
+def test_an_account_refusal_fails_over_like_any_other(status):
+    """402 is the same class as 401/403: the refusal belongs to one account.
+
+    Observed live: a spent balance answered 402 on every request and the relay returned
+    137 errors in a row with zero failovers, while two providers with their own keys sat
+    idle. A payment error is not a client error, so it must reach the next provider.
+    """
+    from proxy.diagnostics import classify
+    kind, public, retryable, detail = classify({"error": {"message": "refused"}}, status)
+    assert kind == f"upstream_http_{status}"
+    assert retryable is True, f"{status} must fail over to a provider with another account"
