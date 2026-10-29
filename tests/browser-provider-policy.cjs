@@ -46,18 +46,25 @@ const initial = () => ({
     await page.locator('#app').waitFor({ state: 'visible' });
     await page.locator('#tab-settings').click();
     await page.waitForFunction(() => !document.querySelector('#config-fieldset').disabled);
+    const openProvider = async () => {
+      const details = page.locator('details.provider-edit');
+      if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
+    };
+    await openProvider();
     const mode = () => page.locator('[data-provider-routing-mode]');
     const tier = () => page.locator('[data-provider-service-tier]');
     const pin = () => page.locator('[data-provider-pin]');
     const save = async () => {
       const count = saves.length;
-      await page.locator('#save-config').click();
+      const local = page.locator('#settings-models').isVisible();
+      await page.locator(await local ? '[data-model-save]' : '[data-provider-save]').click();
       await page.waitForFunction(() => document.querySelector('#save-config').disabled && document.querySelector('#config-state').textContent.includes('Все изменения сохранены'));
       assert.equal(saves.length, count + 1);
       assert.equal(await page.locator('#config-error').isVisible(), false);
       return saves.at(-1);
     };
     assert.equal(await page.locator('.provider-routing').getAttribute('open'), null, 'advanced policy collapsed by default');
+    await openProvider();
     await page.locator('.provider-routing > summary').click();
     assert.equal(await mode().inputValue(), 'native');
     assert.equal(await tier().inputValue(), '');
@@ -69,6 +76,7 @@ const initial = () => ({
     let body = await save();
     for (const field of ['routing_mode', 'service_tier', 'provider_pin']) assert.equal(Object.hasOwn(body.providers[0], field), false);
     assert.equal(Object.hasOwn(body.models[0], 'context_preflight'), false);
+    await openProvider();
     await page.locator('.provider-routing > summary').click();
     await tier().selectOption('priority');
     assert.equal(await mode().inputValue(), 'openrouter', 'tier requires explicit OpenRouter policy in payload');
@@ -78,10 +86,13 @@ const initial = () => ({
     assert.equal(body.providers[0].service_tier, 'priority');
     assert.equal(body.providers[0].provider_pin, 'vendor/exact-endpoint');
     assert.equal(Object.hasOwn(body.providers[0], 'api_key'), false, 'write-only key is not hydrated');
+    await openProvider();
     await page.locator('.provider-routing > summary').click();
     assert.equal(await tier().inputValue(), 'priority', 'saved tier roundtrips');
     assert.equal(await pin().inputValue(), 'vendor/exact-endpoint', 'exact slug roundtrips');
     await page.locator('[data-settings=models]').click();
+    await page.locator('.model-edit > summary').click();
+    await page.locator('.model-metadata > summary').click();
     const preflight = () => page.locator('[data-model-context-preflight]');
     assert.deepEqual(await preflight().locator('option').evaluateAll(options => options.map(option => option.value)), ['off', 'observe']);
     assert.equal(await preflight().inputValue(), 'off');
@@ -93,12 +104,14 @@ const initial = () => ({
     assert.equal(body.providers[0].provider_pin, 'vendor/exact-endpoint', 'model edits preserve provider policy');
     assert.equal(await preflight().inputValue(), 'observe');
     await page.locator('[data-settings=providers]').click();
+    await openProvider();
     await page.locator('.provider-routing > summary').click();
     await mode().selectOption('native');
     assert.equal(await tier().inputValue(), ''); assert.equal(await pin().inputValue(), '');
     body = await save();
     assert.equal(body.providers[0].routing_mode, 'native');
     assert.equal(body.providers[0].service_tier, null); assert.equal(body.providers[0].provider_pin, null);
+    await openProvider();
     await page.locator('.provider-routing > summary').click();
     await pin().fill('vendor/only-endpoint');
     assert.equal(await mode().inputValue(), 'openrouter', 'pin alone enables policy');

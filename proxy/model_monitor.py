@@ -40,6 +40,7 @@ def configuration_key(provider, model, reference_model):
     parts=[provider['id'],provider['base_url'],provider.get('api_key'),model,reference_model]
     policy=routing_identity(provider)
     if policy is not None:parts.append(policy)
+    if provider.get('proxy_id'):parts.append({'proxy_id':provider['proxy_id']})
     raw=json.dumps(parts,separators=(',',':'))
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -114,6 +115,13 @@ class ModelMonitor:
 
     def binding_key(self,provider,model,reference_model):
         key=configuration_key(provider,model,reference_model)
+        if provider.get('proxy_id'):
+            from .outbound_proxy import resolve_proxy
+            from .proxy_transport import proxy_fingerprint
+            try:
+                profile=resolve_proxy(self.store.get_config(True),provider['proxy_id'])
+                key=hashlib.sha256((key+':'+proxy_fingerprint(profile)).encode()).hexdigest()
+            except ValueError:key=hashlib.sha256((key+':unavailable-proxy').encode()).hexdigest()
         return hashlib.sha256((key+':'+self.catalog.get('source_commit','unknown')).encode()).hexdigest()
 
     async def refresh(self):
@@ -281,9 +289,10 @@ class ModelMonitor:
                         raise ValueError('monitor_disabled_or_target_removed')
                 metrics=ProbeMetrics();metrics.capabilities=getattr(self.store,'capabilities',None)
                 engine=Engine(metrics,transport=self.transport)
-                # Dedicated direct single-provider route, independent of pool
-                # quarantine/cooldown so blocked backends can recover.
+                # Dedicated single-provider route, preserving its outbound proxy,
+                # independent of quarantine/cooldown so blocked backends recover.
                 c={'settings':{**config['settings'],'max_attempts':1,'request_timeout_s':250,'read_timeout_s':120,'max_response_bytes':16777216,'max_buffer_events':65536},
+                   'outbound_proxies':config.get('outbound_proxies',[]),
                    'providers':[provider], 'models':[{'id':'fingerprint-probe','name':job['model'],'enabled':True,'supports_vision':False,
                     'routes':[{'provider_id':provider['id'],'upstream_model':job['model'],'enabled':True}]}]}
                 async with asyncio.timeout(1800):

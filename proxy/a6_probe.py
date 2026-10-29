@@ -15,6 +15,7 @@ from .engine import GatewayError, parse_sse
 from .a6_client import A6Error
 from .probe_stream import ProbeCompletion
 from .probe_rounds import parsed_number_count, complete_analysis
+from .proxy_transport import async_client
 
 
 class ProbeError(Exception):
@@ -58,10 +59,11 @@ async def responses_text(response,model,max_bytes=16777216):
 
 
 class TargetProbe:
-    def __init__(self,client,monitor,transport=None):
+    def __init__(self,client,monitor,transport=None,proxy=None):
         self.client=client
         self.monitor=monitor
         self.transport=transport
+        self.proxy=proxy if proxy is not None else getattr(client,'proxy',None)
 
     async def challenge(self,pool,channel,secret,challenge):
         # Target is selected by the dedicated test token's strict one-channel
@@ -79,7 +81,7 @@ class TargetProbe:
         if activity is not None:await activity('connecting')
         try:
             async with asyncio.timeout(180):
-                async with httpx.AsyncClient(transport=self.transport,trust_env=False,follow_redirects=False,
+                async with async_client(self.proxy,self.transport,
                     timeout=httpx.Timeout(120,connect=10),limits=httpx.Limits(max_keepalive_connections=0)) as http:
                     async with http.stream('POST',url,json=body,headers=headers) as response:
                         request_id=response.headers.get('x-oneapi-request-id') or response.headers.get('x-request-id')
@@ -99,6 +101,8 @@ class TargetProbe:
                             try:await parse_sse(response,result)
                             except GatewayError as e:raise ProbeError(e.kind) from None
                             text,finish=result.text,result.finished.get(0)
+        except ValueError:
+            raise ProbeError('outbound_proxy_unavailable') from None
         finally:
             billing=getattr(self,'billing_settler',None)
             if billing is not None:

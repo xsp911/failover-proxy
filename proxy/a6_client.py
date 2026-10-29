@@ -8,6 +8,7 @@ import re
 import time
 import weakref
 from email.utils import parsedate_to_datetime
+from .a6_origin import CONSOLE_BASE
 
 
 _REQUEST_SPACING = .15
@@ -95,6 +96,8 @@ def _loop_entry(registry, key, factory):
 
 import httpx
 
+from .proxy_transport import async_client, proxy_fingerprint
+
 
 class A6Error(Exception):
     def __init__(self,kind,status=502):super().__init__(kind);self.kind=kind;self.status=status
@@ -108,12 +111,18 @@ def model(v):
 
 
 class A6Client:
-    def __init__(self,pat,user_id,transport=None):
+    def __init__(self,pat,user_id,transport=None,proxy=None):
         # Credential identity is internal only; diagnostics never return this key.
         self._account_key = hashlib.sha256(json.dumps([str(user_id), pat]).encode()).digest()
         self._transport_context = transport
-        self.http=httpx.AsyncClient(base_url='https://a6api.com',headers={'Authorization':'Bearer '+pat,'New-Api-User':str(user_id),'Content-Type':'application/json','Accept-Encoding':'identity'},
-            timeout=httpx.Timeout(30,connect=10),transport=transport,trust_env=False,follow_redirects=False)
+        self.proxy = copy.deepcopy(proxy)
+        self._proxy_key = proxy_fingerprint(proxy)
+        self._cache_key = self._account_key if proxy is None else (self._account_key, self._proxy_key)
+        try:
+            self.http=async_client(proxy,transport,base_url=CONSOLE_BASE,headers={'Authorization':'Bearer '+pat,'New-Api-User':str(user_id),'Content-Type':'application/json','Accept-Encoding':'identity'},
+                timeout=httpx.Timeout(30,connect=10))
+        except ValueError:
+            raise A6Error('outbound_proxy_unavailable') from None
 
     async def close(self):await self.http.aclose()
 
@@ -183,7 +192,7 @@ class A6Client:
         # Custom transports stay fresh: fixtures never share production cache.
         if self._transport_context is not None:
             return await self._tokens_uncached()
-        cache = _loop_entry(_TOKEN_CACHES, self._account_key, _TokenCache)
+        cache = _loop_entry(_TOKEN_CACHES, self._cache_key, _TokenCache)
         async with cache.lock:
             if cache.value is not None and asyncio.get_running_loop().time() < cache.expires:
                 return copy.deepcopy(cache.value)
@@ -315,7 +324,7 @@ class A6Client:
 
     async def quota_per_unit(self):
         if self._transport_context is None:
-            cache=_loop_entry(_BILLING_UNIT_CACHES,self._account_key,_TokenCache)
+            cache=_loop_entry(_BILLING_UNIT_CACHES,self._cache_key,_TokenCache)
             async with cache.lock:
                 if cache.value is not None and asyncio.get_running_loop().time()<cache.expires:return cache.value
                 value=await self._quota_unit_uncached()

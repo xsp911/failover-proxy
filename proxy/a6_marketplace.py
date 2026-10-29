@@ -6,7 +6,9 @@ input token is than a normal one (100 - cache_read/input*100).
 """
 import httpx
 
-BASE = 'https://a6api.com'
+from .proxy_transport import async_client
+
+from .a6_origin import CONSOLE_BASE as BASE
 MAX_LISTINGS = 10000
 
 
@@ -20,9 +22,8 @@ def _headers(pat, user_id):
     return {'Authorization': 'Bearer ' + pat, 'New-Api-User': str(user_id)}
 
 
-async def tokens(pat, user_id, transport=None):
-    async with httpx.AsyncClient(base_url=BASE, timeout=httpx.Timeout(20, connect=10), trust_env=False,
-                                 transport=transport, follow_redirects=False) as client:
+async def tokens(pat, user_id, transport=None, proxy=None):
+    async with async_client(proxy, transport, base_url=BASE, timeout=httpx.Timeout(20, connect=10)) as client:
         response = await client.get('/api/token/?p=1&size=100', headers=_headers(pat, user_id))
     if response.status_code == 401:
         raise MarketplaceError('a6_auth_rejected')
@@ -57,7 +58,7 @@ def _cache_share(cache_read, input_price):
     return round(100 * cache_read / input_price, 2)
 
 
-async def sellers(pat, user_id, model, min_success_percent=None, max_cache_usd=None, limit=50, transport=None):
+async def sellers(pat, user_id, model, min_success_percent=None, max_cache_usd=None, limit=50, transport=None, proxy=None):
     model = model.strip() if isinstance(model, str) else ''
     if not 1 <= len(model) <= 200 or any(ord(c) < 32 for c in model) or any(c.isspace() for c in model):
         raise MarketplaceError('invalid_model')
@@ -65,8 +66,7 @@ async def sellers(pat, user_id, model, min_success_percent=None, max_cache_usd=N
         raise MarketplaceError('invalid_success_percent')
     if max_cache_usd is not None and (isinstance(max_cache_usd, bool) or not isinstance(max_cache_usd, (int, float)) or not 0 <= max_cache_usd <= 1000):
         raise MarketplaceError('invalid_cache_price')
-    async with httpx.AsyncClient(base_url=BASE, timeout=httpx.Timeout(60, connect=10), trust_env=False,
-                                 transport=transport, follow_redirects=False) as client:
+    async with async_client(proxy, transport, base_url=BASE, timeout=httpx.Timeout(60, connect=10)) as client:
         response = await client.get('/api/marketplace/channels', headers=_headers(pat, user_id))
     if response.status_code == 401:
         raise MarketplaceError('a6_auth_rejected')

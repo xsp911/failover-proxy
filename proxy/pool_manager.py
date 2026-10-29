@@ -69,7 +69,11 @@ class PoolManager:
     def client(self):
         pat,user=self.a6.secret()
         if not pat or not user:raise PoolError('a6_not_configured')
-        return A6Client(pat,user,transport=self.transport)
+        try:
+            proxy=self.a6.proxy() if hasattr(self.a6,'proxy') else None
+            return A6Client(pat,user,transport=self.transport,proxy=proxy)
+        except ValueError:
+            raise PoolError('outbound_proxy_unavailable',502) from None
 
     async def start(self):
         self.scheduler=asyncio.create_task(self._schedule())

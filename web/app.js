@@ -7,6 +7,10 @@
   const dateFormat = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const timeFormat = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const state = { session: null, epoch: 0, tab: 'stats', settingsTab: 'providers', period: 'day', config: null, draft: null, dirty: false, saving: false, configLoading: false, keys: [], keysLoading: false, stats: null, statsSequence: 0, statsController: null, poll: null };
+  const a6Proxy = { loaded: false, dirty: false, proxyId: null };
+  const providerEditors = new Set();
+  const modelEditors = new Set();
+  const proxyChecks = new Set();
   const pools = { tab: 'pools', section: 'overview', data: null, selected: null, dirty: false, busy: false, loading: false, preview: null, timer: null, controller: null, sequence: 0 };
   const poolEvents = { id: null, data: null, loading: false, controller: null, sequence: 0 };
   const detector = { data: null, draft: null, dirty: false, saving: false, checking: false, timer: null, controller: null, sequence: 0, logController: null, logSequence: 0, cancelling: new Set() };
@@ -152,6 +156,7 @@
     $('account-form').reset();
     areaError('account-error', '');
     for (const provider of state.draft?.providers || []) delete provider.api_key;
+    clearProxySecrets();
     for (const input of document.querySelectorAll('input[data-provider-secret]')) input.value = '';
     text('new-token', '');
     text('copy-status', '');
@@ -176,6 +181,9 @@
     $('pool-details').hidden = $('pool-preview-panel').hidden = true;
     pools.tab = 'pools'; pools.section = 'overview';
     $('a6-pat').value = '';
+    a6Proxy.loaded = a6Proxy.dirty = false; a6Proxy.proxyId = null; a6Proxy.useProxy = false; proxyChecks.clear();
+    $('a6-use-proxy').checked = false; $('a6-proxy-id').replaceChildren(); $('a6-proxy-id').disabled = true;
+    $('api-access-enabled').checked = false; $('api-access-ips').value = ''; text('access-client-ip', 'IP текущего соединения ещё не загружен.');
     clearSecrets();
     detector.data = detector.draft = null;
     detector.dirty = detector.saving = detector.checking = false;
@@ -201,6 +209,7 @@
     $('config-fieldset').disabled = true;
     $('save-config').disabled = true;
     $('provider-editor').replaceChildren();
+    $('proxy-editor').replaceChildren();
     $('model-editor').replaceChildren();
     $('general-fields').replaceChildren();
     $('key-models').replaceChildren();
@@ -240,19 +249,23 @@
     } catch (error) { showLogin(error.status === 401 ? '' : 'Проверка сессии недоступна. Повторите проверку или войдите, когда сервер станет доступен.'); }
     finally { $('session-retry').disabled = false; }
   }
-  // Six sidebar entries. «Журнал проверок» and the A6 credentials are subsurfaces of
-  // «Проверки» and «A6API»: they keep their own state but are not top-level sections.
+  // One sidebar: every destination opens directly, without a second settings menu.
   const navEntries = ['stats', 'settings', 'access', 'detector', 'market', 'pelican'];
   const viewOfTab = { stats: 'stats', settings: 'settings', access: 'settings', detector: 'detector', 'detector-log': 'detector', market: 'market', pelican: 'pelican' };
   const navEntryOf = tab => (tab === 'detector-log' ? 'detector' : tab);
-  const settingsGroups = { providers: 'gateway', models: 'gateway', general: 'gateway', keys: 'access', account: 'access', a6: 'market' };
+  const settingsGroups = { providers: 'gateway', models: 'gateway', general: 'gateway', proxies: 'gateway', 'api-access': 'access', keys: 'access', account: 'access', a6: 'market' };
   function markNavigation(tab) {
     const entry = navEntryOf(tab);
     for (const name of navEntries) {
-      const button = $('tab-' + name), active = name === entry;
+      const button = $('tab-' + name), active = name === entry && !(name === 'settings' && state.settingsTab !== 'providers') && !(name === 'access' && state.settingsTab !== 'keys') && !(name === 'market' && pools.tab === 'creds');
       button.classList.toggle('active', active);
       button.removeAttribute('aria-current');
       if (active) button.setAttribute('aria-current', 'page');
+    }
+    for (const button of document.querySelectorAll('[data-settings]')) {
+      const active = button.dataset.settings === state.settingsTab && ((['settings', 'access'].includes(tab) && button.dataset.settings !== 'a6') || (tab === 'market' && pools.tab === 'creds' && button.dataset.settings === 'a6'));
+      button.classList.toggle('active', active);
+      if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     }
     const journal = $('tab-detector-log');
     journal.classList.toggle('active', tab === 'detector-log');
@@ -270,10 +283,16 @@
     pools.tab = creds ? 'creds' : 'pools';
     $('market-pools-panel').hidden = creds;
     $('market-creds-panel').hidden = !creds;
+    $('settings-a6').hidden = !creds;
     for (const [id, selected] of [['a6-tab-pools', !creds], ['a6-tab-creds', creds]]) {
       $(id).setAttribute('aria-selected', String(selected)); $(id).tabIndex = selected ? 0 : -1;
     }
     if (creds) void loadA6();
+    if (state.tab === 'market') {
+      if (creds) state.settingsTab = 'a6';
+      markNavigation('market');
+      text('active-page-title', creds ? 'Доступ к A6API' : 'Пулы A6API');
+    }
     if (syncPolling) updatePoolsPolling();
   }
   function switchTab(tab) {
@@ -289,8 +308,8 @@
     markNavigation(tab);
     activateDetectorSection(tab === 'detector-log' ? 'log' : 'monitor');
     // Both «Шлюз» and «Доступ» open the same configuration surface, on their own group.
-    if (tab === 'settings') activateSettings(settingsGroups[state.settingsTab] === 'gateway' ? state.settingsTab : 'providers', false);
-    if (tab === 'access') activateSettings(settingsGroups[state.settingsTab] === 'access' ? state.settingsTab : 'keys', false);
+    if (tab === 'settings') activateSettings('providers', false);
+    if (tab === 'access') activateSettings('keys', false);
     if (tab === 'market') activateMarketSection('pools', false);
     updatePolling();
     updateDetectorPolling();
@@ -308,13 +327,23 @@
   function activateSettings(tab, refresh = true) {
     state.settingsTab = tab;
     const group = settingsGroups[tab] || 'gateway';
+    const destination = group === 'market' ? 'market' : group === 'access' ? 'access' : 'settings';
+    if (group === 'market') pools.tab = 'creds';
+    if (state.tab !== destination) {
+      state.tab = destination;
+      for (const name of ['stats', 'settings', 'detector', 'market', 'pelican']) $(name + '-view').hidden = name !== viewOfTab[destination];
+      updatePolling(); updateDetectorPolling(); updatePelicanPolling(); updatePoolsPolling();
+    }
+    setNavigationOpen(false);
+    if (refresh && !state.config && !state.configLoading) void loadConfig();
     for (const button of document.querySelectorAll('[data-settings]')) {
       if (button.dataset.settings === tab) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     }
-    for (const name of ['providers', 'models', 'general', 'keys', 'a6', 'account']) $('settings-' + name).hidden = name !== tab;
-    $('config-form').hidden = group !== 'gateway';
-    // Save/reload belong to the configuration form only, never to keys or the account.
-    if ($('config-actions')) $('config-actions').hidden = group !== 'gateway';
+    for (const name of ['providers', 'models', 'general', 'proxies', 'api-access', 'keys', 'a6', 'account']) $('settings-' + name).hidden = name !== tab;
+    const configSection = group === 'gateway' || tab === 'api-access';
+    $('config-form').hidden = !configSection;
+    // IP access and proxy profiles share the explicit, revision-checked config save.
+    if ($('config-actions')) $('config-actions').hidden = tab !== 'api-access';
     const access = group === 'access';
     text('settings-title', access ? 'Доступ' : 'Шлюз');
     text('settings-subtitle', access ? 'Ключи клиентского API и учётная запись администратора.' : 'Поставщики, модели и ограничения одного API.');
@@ -336,6 +365,22 @@
       $('active-page-description').title = pageLabels[state.tab]?.[1] || '';
       markNavigation(state.tab);
     }
+    const labels = {
+      providers: ['Поставщики', 'Подключения к API, ключи и порядок переключения.'],
+      models: ['Модели и маршруты', 'Модели для клиентов и их маршруты к поставщикам.'],
+      general: ['Лимиты и таймауты', 'Ограничения запросов и поведение при сбоях.'],
+      proxies: ['Прокси-серверы', 'HTTP и SOCKS: подключения, авторизация и внешний IP.'],
+      keys: ['Ключи API', 'Создание и управление доступом приложений.'],
+      'api-access': ['Белый список IP', 'Разрешённые адреса и подсети клиентского API.'],
+      account: ['Логин и пароль', 'Учётная запись администратора панели.'],
+      a6: ['Доступ к A6API', 'PAT, учётная запись и прокси для консоли A6API.']
+    };
+    const label = labels[tab];
+    text('settings-title', label[0]); text('settings-subtitle', label[1]);
+    text('active-page-title', label[0]); text('active-page-description', label[1]);
+    $('active-page-description').title = label[1];
+    markNavigation(state.tab);
+    if (refresh && tab === 'providers' && state.draft) renderProviders();
     if (refresh && tab === 'models' && state.draft) renderModels();
     if (refresh && tab === 'keys') { renderKeyModels(); void loadKeys(); }
   }
@@ -398,7 +443,9 @@
     const healthy = ['ok', 'healthy', 'ready', 'up'].includes(String(health.status).toLowerCase());
     text('health-badge', healthy ? 'Система работает' : 'Статус: ' + String(health.status || 'неизвестен'));
     $('health-badge').className = 'badge' + (healthy ? '' : ' warning');
-    text('version', health.version ? 'v' + String(health.version).replace(/^v/, '') : '');
+    const version = health.version ? 'v' + String(health.version).replace(/^v/, '') : '';
+    text('version', version);
+    text('sidebar-version', version || '—');
     text('footer-health', 'Активных запросов: ' + number(health.active_requests) + (health.queued_requests == null ? '' : ' · В очереди: ' + number(health.queued_requests)) + ' · Полная буферизация');
   }
   function renderStats(data) {
@@ -600,7 +647,9 @@
     return {
       revision: config.revision,
       settings,
-      providers: config.providers.map(p => ({ id: p.id, name: p.name, base_url: p.base_url, enabled: p.enabled === true, priority: p.priority, has_api_key: p.has_api_key === true, ...optionalFields(p, ['routing_mode', 'service_tier', 'provider_pin']) })),
+      outbound_proxies: (config.outbound_proxies || []).map(p => ({ id: p.id, name: p.name, scheme: p.scheme, host: p.host, port: p.port, username: p.username || '', has_password: p.has_password === true })),
+      api_access: { enabled: config.api_access?.enabled === true, allowed_ips: Array.isArray(config.api_access?.allowed_ips) ? config.api_access.allowed_ips.filter(ip => typeof ip === 'string') : [] },
+      providers: config.providers.map(p => ({ id: p.id, name: p.name, base_url: p.base_url, enabled: p.enabled === true, priority: p.priority, has_api_key: p.has_api_key === true, ...optionalFields(p, ['routing_mode', 'service_tier', 'provider_pin', 'proxy_id']) })),
       models: config.models.map(m => ({ id: m.id, name: m.name, supports_vision: m.supports_vision === true, enabled: m.enabled === true, context_length: m.context_length ?? null, max_output_tokens: m.max_output_tokens ?? null, ...optionalFields(m, ['context_preflight']), routes: (m.routes || []).map(r => ({ provider_id: r.provider_id, upstream_model: r.upstream_model, enabled: r.enabled === true })) }))
     };
   }
@@ -617,6 +666,32 @@
     text('save-config', state.saving ? 'Сохранение…' : 'Сохранить изменения');
     text('config-state', state.configLoading ? 'Загрузка конфигурации…' : state.saving ? 'Сохраняем с проверкой ревизии…' : state.draft ? 'Ревизия ' + state.draft.revision + (state.dirty ? ' · Есть несохранённые изменения' : ' · Все изменения сохранены') : 'Конфигурация не загружена');
     for (const button of document.querySelectorAll('[data-provider-test]')) button.disabled = state.dirty || state.saving || !state.config?.providers.some(provider => provider.id === button.dataset.providerTest);
+    for (const button of document.querySelectorAll('[data-provider-save]')) {
+      const provider = state.draft?.providers.find(item => item.id === button.dataset.providerSave);
+      const changed = provider && providerChanged(provider);
+      button.hidden = !changed; button.disabled = state.saving || state.configLoading || !changed;
+      button.textContent = state.saving ? 'Сохранение…' : 'Сохранить';
+      button.closest('.provider-card')?.classList.toggle('provider-changed', !!changed);
+    }
+    for (const button of document.querySelectorAll('[data-proxy-check]')) button.disabled = state.dirty || state.saving || state.configLoading || proxyChecks.has(button.dataset.proxyCheck) || !state.config?.outbound_proxies.some(profile => profile.id === button.dataset.proxyCheck);
+    for (const button of document.querySelectorAll('[data-model-save]')) {
+      const model = state.draft?.models.find(item => item.id === button.dataset.modelSave);
+      const saved = state.config?.models.find(item => item.id === button.dataset.modelSave);
+      const changed = model && (!saved || JSON.stringify(modelPayload(model)) !== JSON.stringify(modelPayload(saved)));
+      button.hidden = !changed; button.disabled = state.saving || state.configLoading || !changed;
+      button.textContent = state.saving ? 'Сохранение…' : 'Сохранить';
+      button.closest('.model-card')?.classList.toggle('provider-changed', !!changed);
+    }
+    if (state.draft && state.config) {
+      for (const [id, field] of [['save-proxies', 'outbound_proxies'], ['save-general', 'settings']]) {
+        const changed = JSON.stringify(configPayload()[field]) !== JSON.stringify(configPayload(state.config)[field]);
+        $(id).hidden = !changed; $(id).disabled = state.saving || state.configLoading;
+      }
+      for (const [id, field] of [['provider-deletions', 'providers'], ['model-deletions', 'models']]) {
+        $(id).hidden = !state.config[field].some(item => !state.draft[field].some(draft => draft.id === item.id));
+        $(id).querySelector('button').disabled = state.saving || state.configLoading;
+      }
+    }
     text('provider-count', state.draft?.providers.length || 0);
     text('model-count', state.draft?.models.length || 0);
   }
@@ -643,9 +718,14 @@
   function clearProviderSecrets() {
     for (const provider of state.draft?.providers || []) delete provider.api_key;
     for (const input of document.querySelectorAll('input[data-provider-secret]')) input.value = '';
+    clearProxySecrets();
+  }
+  function clearProxySecrets() {
+    for (const profile of state.draft?.outbound_proxies || []) delete profile.password;
+    for (const input of document.querySelectorAll('input[data-proxy-secret]')) input.value = '';
   }
   function renderConfig() {
-    renderProviders(); renderModels(); renderGeneral(); renderKeyModels(); updateConfigState();
+    renderProviders(); renderProxies(); renderApiAccess(); renderA6Proxy(); renderModels(); renderGeneral(); renderKeyModels(); updateConfigState();
   }
   function inputField(labelText, value, { type = 'text', placeholder = '', required = false, min, step, hint = '', maxLength = 500, onInput } = {}) {
     const label = el('label', '', labelText), input = el('input');
@@ -696,23 +776,42 @@
       $('confirm-dialog').showModal();
     });
   }
+  function providerPayload(provider) {
+    const result = { id: provider.id, name: provider.name.trim(), base_url: provider.base_url.trim(), enabled: provider.enabled, priority: provider.priority, has_api_key: provider.has_api_key, ...optionalFields(provider, ['routing_mode', 'service_tier', 'provider_pin', 'proxy_id']) };
+    if (provider.api_key?.trim()) result.api_key = provider.api_key;
+    return result;
+  }
+  function providerChanged(provider) {
+    const saved = state.config?.providers.find(item => item.id === provider.id);
+    return !saved || JSON.stringify(providerPayload(provider)) !== JSON.stringify(providerPayload(saved));
+  }
   function renderProviders() {
     if (!state.draft) return;
     $('provider-editor').replaceChildren(...state.draft.providers.map((provider, index) => {
-      const card = el('article', 'panel editor-card'), heading = el('div', 'editor-heading'), left = el('div', 'editor-heading-left');
+      const card = el('article', 'panel editor-card provider-card'), heading = el('div', 'editor-heading'), left = el('div', 'editor-heading-left');
+      card.dataset.providerId = provider.id;
       const titles = el('div'), title = el('h3', '', provider.name || 'Новый поставщик');
-      titles.append(title, el('p', 'small', 'OpenAI-compatible · Chat Completions'));
+      let endpoint = provider.base_url || 'Адрес ещё не указан';
+      try { endpoint = new URL(provider.base_url).host; } catch { /* Unsaved invalid URL stays local text. */ }
+      const meta = el('p', 'small provider-summary', endpoint + ' · Приоритет ' + provider.priority);
+      titles.append(title, meta);
       left.append(el('span', 'order-marker', String(index + 1).padStart(2, '0')), titles);
       const controls = el('div', 'editor-actions');
-      controls.append(toggle('Включён', provider.enabled, value => { provider.enabled = value; }), action('Удалить', 'subtle small-button', async () => {
+      const localSave = action('Сохранить', 'primary small-button provider-save', () => saveProvider(provider.id));
+      localSave.dataset.providerSave = provider.id; localSave.hidden = !providerChanged(provider);
+      controls.append(toggle('Включён', provider.enabled, value => { provider.enabled = value; }), localSave, action('Удалить', 'destructive small-button', async () => {
         const routeCount = state.draft.models.reduce((count, model) => count + model.routes.filter(route => route.provider_id === provider.id).length, 0);
-        if (!await confirmAction('Удалить поставщика?', '«' + (provider.name || 'Новый поставщик') + '» будет удалён из черновика. Связанных маршрутов: ' + routeCount + '; они тоже будут удалены. Изменения вступят в силу после сохранения.')) return;
+        if (!await confirmAction('Удалить поставщика?', '«' + (provider.name || 'Новый поставщик') + '» будет удалён из черновика. Связанных маршрутов: ' + routeCount + '; они тоже будут удалены. Примените удаление отдельной красной кнопкой под списком.')) return;
         if (!state.draft) return;
         state.draft.providers = state.draft.providers.filter(item => item.id !== provider.id);
         for (const model of state.draft.models) model.routes = model.routes.filter(route => route.provider_id !== provider.id);
         markDirty(); renderProviders(); renderModels();
       }));
       heading.append(left, controls);
+      const editor = el('details', 'provider-edit');
+      editor.open = providerEditors.has(provider.id) || !state.config?.providers.some(item => item.id === provider.id) || providerChanged(provider);
+      editor.addEventListener('toggle', () => { if (editor.open) providerEditors.add(provider.id); else providerEditors.delete(provider.id); });
+      editor.append(el('summary', '', 'Настроить подключение'));
       const fields = el('div', 'fields-grid');
       const name = inputField('Название', provider.name, { required: true, maxLength: 160, placeholder: 'Например, основной upstream', onInput: value => { provider.name = value; title.textContent = value || 'Новый поставщик'; } });
       const priority = inputField('Приоритет', provider.priority, { type: 'number', required: true, min: 1, step: 1, hint: 'От 1 до 1000. Меньшее число — более ранняя попытка.', onInput: value => { provider.priority = value; } });
@@ -723,6 +822,8 @@
       secret.input.dataset.providerSecret = provider.id;
       secret.label.classList.add('field-full');
       fields.append(name.label, priority.label, url.label, secret.label);
+      const network = el('details', 'provider-network');
+      network.append(el('summary', '', provider.proxy_id ? 'Прокси · подключён' : 'Прокси · напрямую'), providerProxyChoice(provider));
       const advanced = el('details', 'provider-routing'), advancedFields = el('div', 'fields-grid');
       advanced.append(el('summary', '', 'Маршрутизация OpenRouter'));
       const mode = selectField('Режим маршрутизации', provider.routing_mode || 'native', [['native', 'native · напрямую'], ['openrouter', 'openrouter · явная политика']], value => {
@@ -752,22 +853,120 @@
         finally { if (epoch === state.epoch) test.disabled = state.dirty || state.saving; }
       });
       test.dataset.providerTest = provider.id; test.disabled = state.dirty || !state.config?.providers.some(item => item.id === provider.id);
-      bottom.append(test, result); card.append(heading, fields, advanced, bottom); return card;
+      bottom.append(test, result);
+      const localError = el('div', 'notice danger provider-save-error'); localError.hidden = true; localError.setAttribute('role', 'alert'); localError.dataset.providerError = provider.id;
+      editor.append(fields, network, advanced, bottom); card.append(heading, localError, editor); return card;
     }));
     if (!state.draft.providers.length) $('provider-editor').append(el('div', 'panel empty', 'Первый шаг — добавьте поставщика. Затем создайте модель и её маршрут.'));
     updateConfigState();
   }
+  function profileOptions(select, selected, profiles) {
+    select.replaceChildren();
+    const empty = el('option', '', 'Выберите профиль'); empty.value = ''; select.append(empty);
+    for (const profile of profiles) {
+      const option = el('option', '', profile.name || 'Без названия'); option.value = profile.id; select.append(option);
+    }
+    if (selected && !profiles.some(profile => profile.id === selected)) {
+      const missing = el('option', '', 'Профиль недоступен · выберите другой'); missing.value = selected; select.append(missing);
+    }
+    select.value = selected || '';
+  }
+  function providerProxyChoice(provider) {
+    const group = el('div', 'proxy-choice field-full'), label = el('label', '', 'Профиль исходящего прокси'), select = el('select');
+    select.dataset.providerProxy = provider.id;
+    profileOptions(select, provider.proxy_id, state.draft.outbound_proxies);
+    const usesProxy = provider._use_proxy ?? !!provider.proxy_id;
+    select.disabled = !usesProxy; select.required = usesProxy;
+    const enabled = toggle('Работать через прокси', usesProxy, value => {
+      provider._use_proxy = value;
+      provider.proxy_id = value ? select.value || null : null;
+      select.disabled = !value; select.required = value;
+    });
+    enabled.querySelector('input').dataset.providerUseProxy = provider.id;
+    select.addEventListener('change', () => { provider.proxy_id = select.value || null; markDirty(); });
+    label.append(select); group.append(enabled, label, el('p', 'small', 'Без флажка запросы идут напрямую. Новые профили сначала сохраните в разделе «Прокси-серверы».')); return group;
+  }
+  function renderProxies() {
+    if (!state.draft) return;
+    $('proxy-editor').replaceChildren(...state.draft.outbound_proxies.map((profile, index) => {
+      const card = el('article', 'panel editor-card proxy-card'), heading = el('div', 'editor-heading'), controls = el('div', 'editor-actions');
+      card.dataset.proxyId = profile.id;
+      const title = el('h3', '', profile.name || 'Новый профиль');
+      const move = direction => { const next = index + direction; if (next < 0 || next >= state.draft.outbound_proxies.length) return; [state.draft.outbound_proxies[index], state.draft.outbound_proxies[next]] = [state.draft.outbound_proxies[next], state.draft.outbound_proxies[index]]; markDirty(); renderProxies(); };
+      const up = action('Выше', 'secondary small-button', () => move(-1)), down = action('Ниже', 'secondary small-button', () => move(1));
+      up.disabled = index === 0; down.disabled = index === state.draft.outbound_proxies.length - 1;
+      controls.append(up, down, action('Удалить', 'subtle small-button', async () => {
+        const references = state.draft.providers.filter(provider => provider.proxy_id === profile.id).length;
+        if (references || a6Proxy.proxyId === profile.id) { showNotice('Профиль используется: поставщиков ' + references + (a6Proxy.proxyId === profile.id ? ' · A6API' : '') + '. Сначала выберите другой профиль или прямое подключение и сохраните. Сервер также проверит зависимости.', 'warning'); return; }
+        if (!await confirmAction('Удалить профиль прокси?', 'Профиль «' + (profile.name || 'Новый профиль') + '» будет удалён кнопкой «Сохранить прокси». До сохранения сервер не меняется.')) return;
+        if (!state.draft) return;
+        state.draft.outbound_proxies = state.draft.outbound_proxies.filter(item => item.id !== profile.id); markDirty(); renderProxies(); renderProviders();
+      }));
+      heading.append(title, controls);
+      const fields = el('div', 'fields-grid');
+      const name = inputField('Название профиля', profile.name, { required: true, maxLength: 160, onInput: value => { profile.name = value; title.textContent = value || 'Новый профиль'; } });
+      const scheme = selectField('Протокол', profile.scheme, ['http', 'https', 'socks5', 'socks5h'].map(value => [value, value]), value => { profile.scheme = value; });
+      const host = inputField('Хост прокси', profile.host, { required: true, maxLength: 253, placeholder: 'proxy.example.com или IP', hint: 'Только хост или IP, без схемы, пути и учётных данных.', onInput: value => { profile.host = value; } });
+      const port = inputField('Порт', profile.port, { type: 'number', required: true, min: 1, step: 1, onInput: value => { profile.port = value; } }); port.input.max = 65535;
+      const username = inputField('Имя пользователя', profile.username, { maxLength: 1024, onInput: value => { profile.username = value; } });
+      const password = inputField('Новый пароль прокси', profile.password || '', { type: 'password', maxLength: 8192, placeholder: profile.has_password ? 'Пароль сохранён · пустое поле сохраняет прежний' : 'Новый пароль, если нужен', hint: 'Существующий пароль никогда не загружается в форму. Пустое поле не удаляет пароль.', onInput: value => { profile.password = value; if (value) { profile.clear_password = false; clear.querySelector('input').checked = false; } } });
+      password.input.dataset.proxySecret = profile.id;
+      const clear = toggle('Удалить сохранённый пароль при сохранении', profile.clear_password === true, value => { profile.clear_password = value; if (value) { delete profile.password; password.input.value = ''; } });
+      fields.append(name.label, scheme.label, host.label, port.label, username.label, password.label, clear);
+      const bottom = el('div', 'provider-bottom'), result = el('span', 'test-result', 'Внешний запрос · без платной генерации'); result.setAttribute('role', 'status');
+      const check = action('Проверить исходящий IP', 'secondary small-button', async () => {
+        if (state.dirty || state.saving || !state.config?.outbound_proxies.some(item => item.id === profile.id) || proxyChecks.has(profile.id)) return;
+        if (!await confirmAction('Проверить прокси внешним запросом?', 'Будет выполнен внешний запрос для определения исходящего IP через сохранённый профиль «' + (profile.name || 'Без названия') + '». Платная генерация моделей не вызывается.', 'Проверить IP')) return;
+        if (state.dirty || state.saving || !state.session) return;
+        const epoch = state.epoch; proxyChecks.add(profile.id); updateConfigState(); result.textContent = 'Проверяем исходящий IP…';
+        try {
+          const response = await api('/admin/proxies/' + encodeURIComponent(profile.id) + '/check', { method: 'POST', body: {}, timeout: 30000 });
+          if (epoch !== state.epoch) return;
+          result.className = 'test-result ' + (response.ok ? 'success' : 'error');
+          const kinds = { proxy_auth_failed: 'ошибка авторизации прокси', proxy_connection_failed: 'нет соединения с прокси', proxy_timeout: 'таймаут', proxy_invalid_response: 'некорректный ответ' };
+          result.textContent = (response.ok ? 'Исходящий IP: ' + (response.ip || '—') : 'Проверка не пройдена: ' + (kinds[response.error_kind] || 'ошибка подключения')) + ' · ' + number(response.elapsed_ms) + ' мс';
+        } catch (error) { if (epoch === state.epoch) { result.className = 'test-result error'; result.textContent = errorMessage(error); } }
+        finally { if (epoch === state.epoch) { proxyChecks.delete(profile.id); updateConfigState(); } }
+      });
+      check.dataset.proxyCheck = profile.id; bottom.append(check, result); card.append(heading, fields, bottom); return card;
+    }));
+    if (!state.draft.outbound_proxies.length) $('proxy-editor').append(el('div', 'panel empty', 'Профилей пока нет. Добавьте профиль, затем нажмите «Сохранить прокси».'));
+    updateConfigState();
+  }
+  function renderApiAccess() {
+    if (!state.draft) return;
+    $('api-access-enabled').checked = state.draft.api_access.enabled;
+    $('api-access-ips').value = state.draft.api_access.allowed_ips.join('\n');
+  }
+  async function loadAccessIp() {
+    if (!state.session) return;
+    const epoch = state.epoch; $('refresh-access-ip').disabled = true; text('access-client-ip', 'Читаем IP прямого соединения…');
+    try { const data = await api('/admin/access'); if (epoch === state.epoch) text('access-client-ip', 'IP текущего прямого соединения: ' + (typeof data.client_ip === 'string' ? data.client_ip : 'неизвестен')); }
+    catch (error) { if (epoch === state.epoch) text('access-client-ip', errorMessage(error)); }
+    finally { if (epoch === state.epoch) $('refresh-access-ip').disabled = false; }
+  }
+  function modelPayload(model) {
+    return { id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled })) };
+  }
   function renderModels() {
     if (!state.draft) return;
     $('model-editor').replaceChildren(...state.draft.models.map(model => {
-      const card = el('article', 'panel editor-card'), heading = el('div', 'editor-heading');
+      const card = el('article', 'panel editor-card model-card'), heading = el('div', 'editor-heading');
+      card.dataset.modelId = model.id;
       const title = el('h3', '', model.name || 'Новая модель'), controls = el('div', 'editor-actions');
-      controls.append(action('Удалить модель', 'subtle small-button', async () => {
-        if (!await confirmAction('Удалить модель?', 'Алиас «' + (model.name || 'Новая модель') + '» и его маршруты будут удалены после сохранения конфигурации. Клиенты больше не смогут вызывать этот алиас.')) return;
+      const save = action('Сохранить', 'primary small-button', () => saveModel(model.id)); save.dataset.modelSave = model.id;
+      const saved = state.config?.models.find(item => item.id === model.id);
+      save.hidden = !!saved && JSON.stringify(modelPayload(saved)) === JSON.stringify(modelPayload(model));
+      controls.append(save, action('Удалить модель', 'destructive small-button', async () => {
+        if (!await confirmAction('Удалить модель?', 'Алиас «' + (model.name || 'Новая модель') + '» и его маршруты будут удалены после нажатия «Применить удаления» под списком. Клиенты больше не смогут вызывать этот алиас.')) return;
         if (!state.draft) return;
         state.draft.models = state.draft.models.filter(item => item.id !== model.id); markDirty(); renderModels();
       }));
-      heading.append(title, controls);
+      const summary = el('div'); summary.append(title, el('p', 'small', (model.enabled ? 'Включена' : 'Выключена') + ' · Маршрутов: ' + model.routes.length));
+      heading.append(summary, controls);
+      const editor = el('details', 'model-edit'); editor.open = modelEditors.has(model.id) || !saved;
+      editor.addEventListener('toggle', () => { if (editor.open) modelEditors.add(model.id); else modelEditors.delete(model.id); });
+      editor.append(el('summary', '', 'Настроить модель и маршруты'));
       const name = inputField('Имя модели / клиентский алиас', model.name, { required: true, maxLength: 200, placeholder: 'Например, assistant-fast', hint: 'Это имя приложение передаёт в поле model. Должно быть уникальным.', onInput: value => { model.name = value; title.textContent = value || 'Новая модель'; } });
       const options = el('div', 'model-options');
       options.append(toggle('Модель включена', model.enabled, value => { model.enabled = value; }), toggle('Поддержка изображений', model.supports_vision, value => { model.supports_vision = value; }));
@@ -797,7 +996,7 @@
         select.value = route.provider_id;
         select.addEventListener('change', () => { route.provider_id = select.value; markDirty(); }); label.append(select);
         const upstream = inputField('Имя модели у поставщика', route.upstream_model, { required: true, maxLength: 300, placeholder: 'Например, gpt-4.1', onInput: value => { route.upstream_model = value; } });
-        const remove = action('Удалить', 'subtle small-button', async () => {
+        const remove = action('Удалить', 'destructive small-button', async () => {
           if (!await confirmAction('Удалить маршрут?', 'Маршрут модели «' + (model.name || 'Новая модель') + '» будет удалён из черновика. Применение — после сохранения.')) return;
           if (!state.draft) return;
           model.routes.splice(index, 1); markDirty(); renderModels();
@@ -805,7 +1004,10 @@
         row.append(label, upstream.label, toggle('Включён', route.enabled, value => { route.enabled = value; }), remove); routes.append(row);
       });
       if (!model.routes.length) routes.append(el('div', 'empty', 'Маршрутов нет. Добавьте хотя бы один для доступности модели.'));
-      card.append(heading, name.label, options, metadata, metadataNote, routeHeading, routes, el('p', 'small', 'Порядок попыток определяется приоритетами поставщиков. Vision — декларация возможностей; upstream должен поддерживать изображения.'));
+      const advanced = el('details', 'model-metadata'); advanced.append(el('summary', '', 'Контекст и дополнительные возможности'), metadata, metadataNote);
+      editor.append(name.label, options, routeHeading, routes, advanced, el('p', 'small', 'Порядок попыток определяется приоритетами поставщиков. Vision — декларация возможностей; upstream должен поддерживать изображения.'));
+      const localError = el('div', 'notice danger'); localError.hidden = true; localError.setAttribute('role', 'alert'); localError.dataset.modelError = model.id;
+      card.append(heading, localError, editor);
       return card;
     }));
     if (!state.draft.models.length) $('model-editor').append(el('div', 'panel empty', 'Моделей пока нет. Создайте клиентский алиас и добавьте маршруты к поставщикам.'));
@@ -816,28 +1018,45 @@
     $('general-fields').replaceChildren(...settingDefs.map(([key, label, hint, min, step]) => inputField(label, state.draft.settings[key], { type: 'number', required: true, min, step, hint, onInput: value => { state.draft.settings[key] = value; } }).label));
     $('trust-private').checked = state.draft.settings.trust_private_upstreams;
   }
-  function configPayload() {
+  function configPayload(draft = state.draft) {
     return {
-      revision: state.draft.revision,
-      settings: { ...state.draft.settings },
-      providers: state.draft.providers.map(provider => {
-        const result = { id: provider.id, name: provider.name.trim(), base_url: provider.base_url.trim(), enabled: provider.enabled, priority: provider.priority, has_api_key: provider.has_api_key, ...optionalFields(provider, ['routing_mode', 'service_tier', 'provider_pin']) };
+      revision: draft.revision,
+      settings: { ...draft.settings },
+      outbound_proxies: draft.outbound_proxies.map(profile => {
+        const result = { id: profile.id, name: profile.name.trim(), scheme: profile.scheme, host: profile.host.trim(), port: profile.port, username: profile.username, has_password: profile.has_password };
+        if (profile.clear_password) result.clear_password = true;
+        else if (profile.password) result.password = profile.password;
+        return result;
+      }),
+      api_access: { enabled: draft.api_access.enabled, allowed_ips: [...draft.api_access.allowed_ips] },
+      providers: draft.providers.map(provider => {
+        const result = { id: provider.id, name: provider.name.trim(), base_url: provider.base_url.trim(), enabled: provider.enabled, priority: provider.priority, has_api_key: provider.has_api_key, ...optionalFields(provider, ['routing_mode', 'service_tier', 'provider_pin', 'proxy_id']) };
         if (provider.api_key?.trim()) result.api_key = provider.api_key;
         return result;
       }),
-      models: state.draft.models.map(model => ({ id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled })) }))
+      models: draft.models.map(model => ({ id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled })) }))
     };
   }
   function validateConfig() {
-    for (const input of $('config-form').querySelectorAll('input,select')) {
+    for (const input of $('config-form').querySelectorAll('input,select,textarea')) {
       if (!input.checkValidity()) {
         const section = input.closest('.settings-section');
         if (section) activateSettings(section.id.replace('settings-', ''), false);
+        for (let ancestor = input.parentElement; ancestor && ancestor !== section; ancestor = ancestor.parentElement) if (ancestor.tagName === 'DETAILS') ancestor.open = true;
         input.reportValidity(); return false;
       }
     }
+    for (const profile of state.draft.outbound_proxies) {
+      if (!profile.name.trim() || !profile.host.trim() || !['http', 'https', 'socks5', 'socks5h'].includes(profile.scheme) || !Number.isInteger(profile.port) || profile.port < 1 || profile.port > 65535) {
+        activateSettings('proxies', false); areaError('config-error', 'Проверьте название, хост, протокол и порт профиля прокси.'); return false;
+      }
+    }
+    if (state.draft.api_access.enabled && !state.draft.api_access.allowed_ips.length) {
+      activateSettings('api-access', false); areaError('config-error', 'Добавьте хотя бы один разрешённый IP или CIDR перед включением списка.'); $('api-access-ips').focus(); return false;
+    }
     const names = new Set();
     for (const provider of state.draft.providers) {
+      if (provider.proxy_id && !state.draft.outbound_proxies.some(profile => profile.id === provider.proxy_id)) { activateSettings('providers', false); areaError('config-error', 'Выберите существующий профиль прокси для поставщика.'); return false; }
       if (!provider.name.trim()) { activateSettings('providers', false); areaError('config-error', 'Название поставщика не может быть пустым.'); return false; }
       if ((provider.service_tier || provider.provider_pin) && provider.routing_mode !== 'openrouter') {
         activateSettings('providers', false); areaError('config-error', 'Service tier и endpoint требуют режима openrouter. Выберите openrouter или очистите эти поля.'); return false;
@@ -860,6 +1079,98 @@
       }
     }
     return true;
+  }
+  async function commitScope(scoped, rebase, errorNode, message) {
+    if (state.saving || state.configLoading) return;
+    const epoch = state.epoch, draft = clone(state.draft);
+    if (errorNode) { errorNode.textContent = ''; errorNode.hidden = false; }
+    state.saving = true; $('config-fieldset').disabled = true; updateConfigState();
+    try {
+      const saved = cleanConfig(await api('/admin/config', { method: 'PUT', body: configPayload(scoped) }));
+      if (epoch !== state.epoch) return;
+      rebase(draft, saved); draft.revision = saved.revision;
+      state.config = saved; state.draft = draft;
+      state.dirty = JSON.stringify(configPayload(draft)) !== JSON.stringify(configPayload(saved));
+      renderConfig(); showNotice(message + (state.dirty ? ' Другие правки остались в черновике.' : ''));
+    } catch (error) {
+      if (epoch === state.epoch && errorNode) { errorNode.textContent = errorMessage(error); errorNode.hidden = false; }
+    } finally {
+      if (epoch === state.epoch) { state.saving = false; $('config-fieldset').disabled = false; updateConfigState(); }
+    }
+  }
+  function validScopeFields(root) {
+    for (const input of root.querySelectorAll('input,select,textarea')) if (!input.checkValidity()) {
+      for (let p = input.parentElement; p && p !== root; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true;
+      input.reportValidity(); return false;
+    }
+    return true;
+  }
+  async function saveModel(id) {
+    if (!state.config || state.saving || state.configLoading) return;
+    const model = state.draft.models.find(item => item.id === id);
+    const card = [...document.querySelectorAll('[data-model-id]')].find(item => item.dataset.modelId === id);
+    if (!model || !card || !validScopeFields(card)) return;
+    const scoped = clone(state.config), index = scoped.models.findIndex(item => item.id === id);
+    if (index < 0) scoped.models.push(clone(model)); else scoped.models[index] = clone(model);
+    await commitScope(scoped, (draft, saved) => { draft.models = draft.models.map(item => item.id === id ? clone(saved.models.find(row => row.id === id)) : item); }, card.querySelector('[data-model-error]'), 'Модель сохранена.');
+  }
+  async function saveSection(field) {
+    if (!state.config || state.saving || state.configLoading) return;
+    const proxies = field === 'outbound_proxies', root = $('settings-' + (proxies ? 'proxies' : 'general'));
+    if (!validScopeFields(root)) return;
+    if (!proxies && state.draft.settings.trust_private_upstreams && !state.config.settings.trust_private_upstreams && !await confirmAction('Разрешить приватные upstream?', 'Это ослабляет защиту от SSRF. Разрешайте только доверенную инфраструктуру.', 'Разрешить')) return;
+    const scoped = clone(state.config); scoped[field] = clone(state.draft[field]);
+    await commitScope(scoped, (draft, saved) => { draft[field] = clone(saved[field]); }, $(proxies ? 'proxies-save-error' : 'general-save-error'), proxies ? 'Прокси сохранены.' : 'Лимиты сохранены.');
+  }
+  async function saveDeletions(field) {
+    if (!state.config || state.saving || state.configLoading) return;
+    const removed = new Set(state.config[field].filter(item => !state.draft[field].some(row => row.id === item.id)).map(item => item.id));
+    if (!removed.size) return;
+    const scoped = clone(state.config); scoped[field] = scoped[field].filter(item => !removed.has(item.id));
+    if (field === 'providers') for (const model of scoped.models) model.routes = model.routes.filter(route => !removed.has(route.provider_id));
+    await commitScope(scoped, draft => { if (field === 'providers') for (const model of draft.models) model.routes = model.routes.filter(route => !removed.has(route.provider_id)); }, $('config-error'), 'Удаления применены.');
+  }
+  async function saveProvider(id) {
+    if (!state.draft || !state.config || state.saving || state.configLoading) return;
+    const provider = state.draft.providers.find(item => item.id === id);
+    if (!provider || !providerChanged(provider)) return;
+    const card = [...document.querySelectorAll('[data-provider-id]')].find(item => item.dataset.providerId === id);
+    const errorNode = card?.querySelector('[data-provider-error]');
+    const fail = message => { if (errorNode) { errorNode.textContent = message; errorNode.hidden = false; } };
+    if (errorNode) errorNode.hidden = true;
+    for (const input of card.querySelectorAll('input,select')) {
+      if (!input.checkValidity()) {
+        for (let ancestor = input.parentElement; ancestor && ancestor !== card; ancestor = ancestor.parentElement) if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+        fail('Проверьте выделенное поле поставщика.'); input.reportValidity(); return;
+      }
+    }
+    let url; try { url = new URL(provider.base_url.trim()); } catch { /* Inline error below. */ }
+    if (!provider.name.trim() || !url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) { fail('Укажите название и корректный базовый URL без логина, пароля и query-параметров.'); return; }
+    if (provider._use_proxy && !provider.proxy_id) { fail('Выберите профиль прокси или выключите работу через прокси.'); return; }
+    if (provider.proxy_id && !state.config.outbound_proxies.some(profile => profile.id === provider.proxy_id)) { fail('Сначала сохраните профиль прокси в разделе «Прокси-серверы».'); return; }
+    const scoped = clone(state.config), currentDraft = clone(state.draft);
+    const index = scoped.providers.findIndex(item => item.id === id);
+    if (index < 0) scoped.providers.push(clone(provider)); else scoped.providers[index] = clone(provider);
+    const epoch = state.epoch;
+    state.saving = true; $('config-fieldset').disabled = true; updateConfigState();
+    try {
+      const saved = cleanConfig(await api('/admin/config', { method: 'PUT', body: configPayload(scoped) }));
+      if (epoch !== state.epoch) return;
+      const persisted = saved.providers.find(item => item.id === id);
+      if (!persisted) throw new Error('Missing saved provider');
+      // Replace only the saved provider; all unrelated drafts and their typed keys stay local.
+      currentDraft.providers = currentDraft.providers.map(item => item.id === id ? clone(persisted) : item);
+      currentDraft.revision = saved.revision;
+      delete provider.api_key;
+      state.config = saved; state.draft = currentDraft;
+      state.dirty = JSON.stringify(configPayload(currentDraft)) !== JSON.stringify(configPayload(saved));
+      renderConfig();
+      showNotice('Поставщик «' + persisted.name + '» сохранён.' + (state.dirty ? ' Остальные несохранённые правки остались в черновике.' : ''));
+    } catch (error) {
+      if (epoch === state.epoch) fail(errorMessage(error));
+    } finally {
+      if (epoch === state.epoch) { state.saving = false; $('config-fieldset').disabled = false; updateConfigState(); }
+    }
   }
   async function saveConfig(event) {
     event.preventDefault();
@@ -1588,13 +1899,24 @@
     });
   }
   // A6API console credentials: PAT is write-only, only a mask comes back.
-  function renderA6(data) {
+  function renderA6Proxy() {
+    profileOptions($('a6-proxy-id'), a6Proxy.proxyId, state.config?.outbound_proxies || []);
+    $('a6-use-proxy').checked = a6Proxy.useProxy ?? !!a6Proxy.proxyId;
+    $('a6-proxy-id').disabled = !$('a6-use-proxy').checked;
+    $('a6-proxy-id').required = $('a6-use-proxy').checked;
+  }
+  function renderA6(data, force = false) {
     const configured = data?.configured === true;
     text('a6-badge', configured ? 'Настроено' : 'Не настроено');
     $('a6-badge').className = 'badge ' + (configured ? '' : 'neutral');
     text('a6-pat-state', data?.has_pat ? 'Сохранённый PAT: ' + (data.pat_masked || '—') + ' · оставьте поле пустым, чтобы не менять' : 'PAT ещё не сохранён');
     if (data?.user_id != null) $('a6-user-id').value = String(data.user_id);
     $('a6-clear').disabled = !data?.has_pat;
+    if (force || !a6Proxy.loaded || !a6Proxy.dirty) {
+      a6Proxy.proxyId = typeof data?.proxy_id === 'string' ? data.proxy_id : null;
+      a6Proxy.useProxy = !!a6Proxy.proxyId; a6Proxy.loaded = true; a6Proxy.dirty = false;
+    }
+    renderA6Proxy();
   }
   async function loadA6() {
     if (!state.session) return;
@@ -1608,24 +1930,26 @@
   }
   function a6Payload() {
     const userId = Number($('a6-user-id').value);
-    return { pat: $('a6-pat').value.trim(), user_id: Number.isInteger(userId) ? userId : $('a6-user-id').value };
+    return { pat: $('a6-pat').value.trim(), user_id: Number.isInteger(userId) ? userId : $('a6-user-id').value, proxy_id: $('a6-use-proxy').checked ? $('a6-proxy-id').value || null : null };
   }
   async function saveA6(event) {
     event.preventDefault();
     if (!state.session) return;
+    if ($('a6-use-proxy').checked && (!$('a6-proxy-id').value || !state.config?.outbound_proxies.some(profile => profile.id === $('a6-proxy-id').value))) { areaError('a6-error', 'Выберите сохранённый профиль прокси.'); $('a6-proxy-id').focus(); return; }
     const epoch = state.epoch; const payload = a6Payload();
     if (payload.pat && payload.pat.length < 16) { areaError('a6-error', 'PAT слишком короткий.'); return; }
     $('a6-save').disabled = true; areaError('a6-error', ''); text('a6-verify-result', '');
     try {
       const data = await api('/admin/a6', { method: 'PUT', body: payload });
       if (epoch !== state.epoch) return;
-      $('a6-pat').value = ''; renderA6(data);
+      $('a6-pat').value = ''; renderA6(data, true);
       showNotice('Учётные данные A6API сохранены.');
     } catch (error) { if (epoch === state.epoch) areaError('a6-error', errorMessage(error)); }
     finally { if (epoch === state.epoch) $('a6-save').disabled = false; }
   }
   async function verifyA6() {
     if (!state.session) return;
+    if ($('a6-use-proxy').checked && (!$('a6-proxy-id').value || !state.config?.outbound_proxies.some(profile => profile.id === $('a6-proxy-id').value))) { areaError('a6-error', 'Выберите сохранённый профиль прокси.'); $('a6-proxy-id').focus(); return; }
     const epoch = state.epoch; const payload = a6Payload();
     $('a6-verify').disabled = true; areaError('a6-error', ''); text('a6-verify-result', 'Проверяем доступ…');
     try {
@@ -1646,7 +1970,7 @@
     try {
       const data = await api('/admin/a6', { method: 'DELETE' });
       if (epoch !== state.epoch) return;
-      $('a6-pat').value = ''; $('a6-user-id').value = ''; renderA6(data); text('a6-verify-result', '');
+      $('a6-pat').value = ''; $('a6-user-id').value = ''; renderA6(data, true); text('a6-verify-result', '');
       showNotice('Учётные данные A6API удалены.');
     } catch (error) { if (epoch === state.epoch) areaError('a6-error', errorMessage(error)); }
     finally { if (epoch === state.epoch) $('a6-clear').disabled = false; }
@@ -2326,6 +2650,16 @@
   $('pool-delete').addEventListener('click', () => void poolAction('delete'));
   $('pool-preview').addEventListener('click', () => void previewPool());
   $('pool-publish').addEventListener('click', () => void publishPool());
+  $('add-proxy').addEventListener('click', () => {
+    if (!state.draft) return;
+    state.draft.outbound_proxies.push({ id: uuid(), name: '', scheme: 'http', host: '', port: 8080, username: '', has_password: false });
+    markDirty(); renderProxies(); renderProviders(); $('proxy-editor').lastElementChild?.querySelector('input')?.focus();
+  });
+  $('api-access-enabled').addEventListener('change', () => { if (state.draft) { state.draft.api_access.enabled = $('api-access-enabled').checked; markDirty(); } });
+  $('api-access-ips').addEventListener('input', () => { if (state.draft) { state.draft.api_access.allowed_ips = $('api-access-ips').value.split(/\r?\n/).map(value => value.trim()).filter(Boolean); markDirty(); } });
+  $('refresh-access-ip').addEventListener('click', () => void loadAccessIp());
+  $('a6-use-proxy').addEventListener('change', () => { a6Proxy.useProxy = $('a6-use-proxy').checked; a6Proxy.proxyId = a6Proxy.useProxy ? $('a6-proxy-id').value || null : null; a6Proxy.dirty = true; renderA6Proxy(); });
+  $('a6-proxy-id').addEventListener('change', () => { a6Proxy.proxyId = $('a6-proxy-id').value || null; a6Proxy.dirty = true; });
   $('a6-form').addEventListener('submit', saveA6);
   $('a6-verify').addEventListener('click', verifyA6);
   $('a6-clear').addEventListener('click', clearA6);
@@ -2364,7 +2698,9 @@
     text('coverage-note', 'Информация о покрытии загружается…');
     void loadStats();
   });
-  for (const button of document.querySelectorAll('[data-settings]')) button.addEventListener('click', () => activateSettings(button.dataset.settings));
+  for (const button of document.querySelectorAll('[data-settings]')) {
+    if (!['tab-settings', 'tab-access'].includes(button.id)) button.addEventListener('click', () => activateSettings(button.dataset.settings));
+  }
   $('reload-config').addEventListener('click', async () => {
     if (state.dirty && !await confirmAction('Отбросить несохранённые изменения?', 'Будет загружена актуальная серверная конфигурация. Правки и введённые ключи поставщиков будут потеряны.', 'Отбросить')) return;
     void loadConfig();
@@ -2383,7 +2719,14 @@
     } catch { showNotice('Браузер не поддерживает безопасное создание ID. Используйте HTTPS и современный браузер.', 'danger'); }
   });
   $('config-form').noValidate = true;
-  $('config-form').addEventListener('submit', saveConfig);
+  $('config-form').addEventListener('submit', event => {
+    if (['providers', 'models', 'proxies', 'general'].includes(state.settingsTab)) { event.preventDefault(); return; }
+    void saveConfig(event);
+  });
+  $('save-proxies').addEventListener('click', () => saveSection('outbound_proxies'));
+  $('save-general').addEventListener('click', () => saveSection('settings'));
+  $('save-provider-deletions').addEventListener('click', () => saveDeletions('providers'));
+  $('save-model-deletions').addEventListener('click', () => saveDeletions('models'));
   $('trust-private').addEventListener('change', () => { if (state.draft) { state.draft.settings.trust_private_upstreams = $('trust-private').checked; markDirty(); } });
   $('key-form').addEventListener('submit', createKey);
   $('account-form').addEventListener('submit', changeAccount);

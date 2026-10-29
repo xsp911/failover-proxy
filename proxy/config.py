@@ -73,11 +73,16 @@ def validate_config(value):
     if not isinstance(private, bool):
         raise ValueError("invalid_trust_private_upstreams")
     clean["trust_private_upstreams"] = private
+    from .outbound_proxy import normalize_profiles
+    profiles = normalize_profiles(value.get('outbound_proxies', []))
+    proxy_ids = {profile['id'] for profile in profiles}
     providers, models = value.get("providers"), value.get("models")
     if not isinstance(providers, list) or len(providers) > 50 or not isinstance(models, list) or len(models) > 100:
         raise ValueError("invalid_providers_or_models")
     ids, output = set(), []
     for row in providers:
+        if not isinstance(row, dict):
+            raise ValueError('invalid_provider')
         id = identifier(row.get("id"))
         if id in ids:
             raise ValueError("duplicate_provider")
@@ -101,6 +106,11 @@ def validate_config(value):
             if not isinstance(key, str) or len(key) > 8192 or any(ord(x) < 32 for x in key):
                 raise ValueError("invalid_api_key")
             p["api_key"] = key
+        if 'proxy_id' in row:
+            proxy_id = row['proxy_id']
+            if proxy_id is not None and (not isinstance(proxy_id, str) or proxy_id not in proxy_ids):
+                raise ValueError('invalid_proxy_reference')
+            p['proxy_id'] = proxy_id
         output.append(p)
     mids, result_models = set(), []
     for row in models:
@@ -134,4 +144,10 @@ def validate_config(value):
     revision = value.get("revision")
     if not isinstance(revision, int) or isinstance(revision, bool):
         raise ValueError("invalid_revision")
-    return {"revision": revision, "settings": clean, "providers": output, "models": result_models}
+    result = {"revision": revision, "settings": clean, "providers": output, "models": result_models}
+    if 'outbound_proxies' in value:
+        result['outbound_proxies'] = profiles
+    if 'api_access' in value:
+        from .ip_allowlist import normalize_access
+        result['api_access'] = normalize_access(value['api_access'])
+    return result

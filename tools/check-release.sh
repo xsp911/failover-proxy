@@ -10,6 +10,9 @@ if [[ ! -x "$PYTHON" ]]; then
 fi
 contracts=(
   tests/browser-feedback.cjs
+  tests/browser-proxy-access.cjs
+  tests/browser-provider-editor.cjs
+  tests/browser-scoped-settings.cjs
   tests/browser-detector.cjs
   tests/browser-a6.cjs
   tests/browser-market.cjs

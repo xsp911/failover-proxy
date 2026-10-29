@@ -308,6 +308,14 @@ class Store:
         # routing config API even in its internal provider-secret view.
         config.pop('_a6_pat_encrypted',None)
         config.pop('a6_user_id',None)
+        config.pop('_a6_proxy_id',None)
+        for profile in config.get('outbound_proxies', []):
+            encrypted = profile.pop('_password_encrypted', None)
+            profile.pop('password', None)
+            profile.pop('clear_password', None)
+            profile['has_password'] = bool(encrypted)
+            if include_secrets:
+                profile['password'] = self._fernet.decrypt(encrypted.encode()).decode() if encrypted else ''
         for provider in config["providers"]:
             encrypted = provider.pop("_api_key_encrypted", None)
             provider.pop("api_key", None)
@@ -342,11 +350,40 @@ class Store:
                     provider["_api_key_encrypted"] = old_keys[provider["id"]]
             payload = {"settings": {**DEFAULT_SETTINGS, **incoming.get("settings", old["settings"])},
                        "providers": providers, "models": incoming.get("models", old["models"])}
-            conn.execute("UPDATE config SET revision=?,payload=? WHERE singleton=1",
+            from .outbound_proxy import normalize_profiles
+            if 'outbound_proxies' in incoming:
+                profiles = normalize_profiles(incoming['outbound_proxies'])
+                old_passwords = {p['id']: p.get('_password_encrypted') for p in old.get('outbound_proxies', [])}
+                for profile in profiles:
+                    supplied = profile.pop('password', None)
+                    clear = profile.pop('clear_password', False)
+                    profile.pop('has_password', None)
+                    if clear:
+                        continue
+                    if isinstance(supplied, str) and supplied:
+                        profile['_password_encrypted'] = self._fernet.encrypt(supplied.encode()).decode()
+                    elif old_passwords.get(profile['id']):
+                        profile['_password_encrypted'] = old_passwords[profile['id']]
+                payload['outbound_proxies'] = profiles
+            elif 'outbound_proxies' in old:
+                payload['outbound_proxies'] = old['outbound_proxies']
+            proxy_ids = {p['id'] for p in payload.get('outbound_proxies', [])}
+            for provider in providers:
+                proxy_id = provider.get('proxy_id')
+                if proxy_id is not None and (not isinstance(proxy_id, str) or proxy_id not in proxy_ids):
+                    raise ValueError('invalid_proxy_reference')
+            if old.get('_a6_proxy_id') and old['_a6_proxy_id'] not in proxy_ids:
+                raise ValueError('proxy_referenced_by_a6')
+            if 'api_access' in incoming:
+                from .ip_allowlist import normalize_access
+                payload['api_access'] = normalize_access(incoming['api_access'])
+            elif 'api_access' in old:
+                payload['api_access'] = old['api_access']
+            for private in ('_a6_pat_encrypted', 'a6_user_id', '_a6_proxy_id'):
+                if private in old:
+                    payload[private] = old[private]
+            conn.execute('UPDATE config SET revision=?,payload=? WHERE singleton=1',
                          (expected_revision + 1, _json(payload)))
-            for private in ('_a6_pat_encrypted','a6_user_id'):
-                if private in old:payload[private]=old[private]
-            conn.execute('UPDATE config SET payload=? WHERE singleton=1',(_json(payload),))
             saved = conn.execute("SELECT * FROM config WHERE singleton=1").fetchone()
             return self._config(saved)
 

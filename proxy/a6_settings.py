@@ -8,8 +8,13 @@ import re
 
 import httpx
 
+from .outbound_proxy import resolve_proxy
+from .proxy_transport import async_client
+
+_UNSET = object()
+
 PAT = re.compile(r'[A-Za-z0-9+/=_.:\-]{16,512}\Z')
-BASE = 'https://a6api.com'
+from .a6_origin import CONSOLE_BASE as BASE
 
 
 def validate(pat, user_id):
@@ -47,7 +52,18 @@ class A6Settings:
         pat = self.store._fernet.decrypt(encrypted.encode()).decode() if encrypted else ''
         return {'configured': bool(encrypted and isinstance(user_id, int)),
                 'pat_masked': mask(pat), 'has_pat': bool(encrypted),
-                'user_id': user_id if isinstance(user_id, int) else None}
+                'user_id': user_id if isinstance(user_id, int) else None,
+                'proxy_id': raw.get('_a6_proxy_id')}
+
+    @property
+    def proxy_id(self):
+        return self._raw().get('_a6_proxy_id')
+
+    def proxy(self):
+        proxy_id = self.proxy_id
+        if proxy_id is None or proxy_id == '':
+            return None
+        return resolve_proxy(self.store.get_config(True), proxy_id)
 
     def secret(self):
         raw = self._raw()
@@ -57,15 +73,22 @@ class A6Settings:
             return None, None
         return self.store._fernet.decrypt(encrypted.encode()).decode(), user_id
 
-    def save(self, pat, user_id):
+    def save(self, pat, user_id, proxy_id=_UNSET):
         pat, user_id = validate(pat, user_id)
         encrypted = self.store._fernet.encrypt(pat.encode()).decode()
         with self.store._connection() as conn:
             conn.execute('BEGIN IMMEDIATE')
-            row = conn.execute('SELECT payload FROM config WHERE singleton=1').fetchone()
+            row = conn.execute('SELECT * FROM config WHERE singleton=1').fetchone()
             raw = json.loads(row['payload'])
+            if proxy_id is not _UNSET:
+                resolve_proxy(self.store._config(row, True), proxy_id)
             raw['_a6_pat_encrypted'] = encrypted
             raw['a6_user_id'] = user_id
+            if proxy_id is not _UNSET:
+                if proxy_id:
+                    raw['_a6_proxy_id'] = proxy_id
+                else:
+                    raw.pop('_a6_proxy_id', None)
             conn.execute('UPDATE config SET payload=? WHERE singleton=1', (json.dumps(raw, ensure_ascii=False),))
         return self.status()
 
@@ -76,16 +99,16 @@ class A6Settings:
             raw = json.loads(row['payload'])
             raw.pop('_a6_pat_encrypted', None)
             raw.pop('a6_user_id', None)
+            raw.pop('_a6_proxy_id', None)
             conn.execute('UPDATE config SET payload=? WHERE singleton=1', (json.dumps(raw, ensure_ascii=False),))
         return self.status()
 
 
-async def verify(pat, user_id, transport=None):
+async def verify(pat, user_id, transport=None, proxy=None):
     """Read-only check: whoami plus token count. Never creates or removes pins."""
     headers = {'Authorization': 'Bearer ' + pat, 'New-Api-User': str(user_id)}
     try:
-        async with httpx.AsyncClient(base_url=BASE, timeout=httpx.Timeout(15, connect=10), trust_env=False,
-                                     transport=transport, follow_redirects=False) as client:
+        async with async_client(proxy, transport, base_url=BASE, timeout=httpx.Timeout(15, connect=10)) as client:
             who = await client.get('/api/user/self', headers=headers)
             if who.status_code == 401:
                 return {'ok': False, 'status': 401, 'error_kind': 'a6_auth_rejected'}
@@ -108,5 +131,7 @@ async def verify(pat, user_id, transport=None):
             return {'ok': True, 'status': 200, 'user_id': actual,
                     'display_name': str(data.get('display_name') or '')[:100],
                     'tokens_total': count if isinstance(count, int) else None}
+    except ValueError:
+        return {'ok': False, 'status': None, 'error_kind': 'outbound_proxy_unavailable'}
     except (httpx.HTTPError, TimeoutError):
         return {'ok': False, 'status': None, 'error_kind': 'a6_connection_failed'}

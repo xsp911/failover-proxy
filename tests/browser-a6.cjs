@@ -72,7 +72,7 @@ const PAT = 'SYNTHETIC_TEST_PAT_0000000000000';
     await page.locator('#a6-pat').fill(PAT);
     await page.locator('#a6-save').click();
     await page.waitForFunction(() => document.getElementById('a6-badge').textContent === 'Настроено');
-    assert.deepEqual(writes[0], {path:'/admin/a6',body:{pat:PAT,user_id:23984}});
+    assert.deepEqual(writes[0], {path:'/admin/a6',body:{pat:PAT,user_id:23984,proxy_id:null}});
     assert.equal(await page.locator('#a6-pat').inputValue(), '', 'PAT field must be cleared after save');
     assert.match(await page.locator('#a6-pat-state').textContent(), /SYNT\*+00/);
     assert.equal(await page.locator('#a6-user-id').inputValue(), '23984');
@@ -84,7 +84,7 @@ const PAT = 'SYNTHETIC_TEST_PAT_0000000000000';
     const verified = await page.locator('#a6-verify-result').textContent();
     assert.match(verified, /xspider/); assert.match(verified, /токенов: 20/);
     assert.match(verified.replace(/\D/g, ''), /23984/);
-    assert.deepEqual(writes[1], {path:'/admin/a6/verify',body:{pat:'',user_id:23984}});
+    assert.deepEqual(writes[1], {path:'/admin/a6/verify',body:{pat:'',user_id:23984,proxy_id:null}});
 
     await page.locator('#a6-user-id').fill('999');
     await page.locator('#a6-verify').click();

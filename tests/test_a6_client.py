@@ -39,7 +39,7 @@ async def test_auth_fixed_origin_token_allowlist_and_secret_helper():
     def handler(request):
         seen.append(request)
         assert request.url.scheme == 'https'
-        assert request.url.host == 'a6api.com'
+        assert request.url.host == 'api.a6api.com'
         assert request.headers['authorization'] == 'Bearer ' + PAT
         assert request.headers['new-api-user'] == '23'
         if request.url.path.endswith('/key'):

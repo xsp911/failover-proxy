@@ -10,6 +10,11 @@ import socket
 import time
 import uuid
 from dataclasses import dataclass, field
+from collections import OrderedDict
+from contextlib import asynccontextmanager
+
+from .outbound_proxy import resolve_proxy
+from .proxy_transport import async_client, proxy_fingerprint
 from urllib.parse import urlsplit
 
 import httpx
@@ -269,24 +274,77 @@ class Engine:
         self.capabilities=getattr(store,'capabilities',None)
         # DNS-pinned IP origins must never share persistent TLS connections
         # across distinct configured hostnames/SNI virtual hosts.
-        self.client = httpx.AsyncClient(transport=transport, trust_env=False, follow_redirects=False,
-            limits=httpx.Limits(max_connections=80, max_keepalive_connections=0), headers={"User-Agent": "FailoverProxy/0.1"})
+        self.transport = transport
+        self.client = self._new_client()
+        self.proxy_clients = OrderedDict()
+        self._retired_proxy_clients = []
         self.cooldowns = {}
         self.failures = {}
         self.active = 0
 
+    def _new_client(self, profile=None):
+        return async_client(profile, self.transport,
+            limits=httpx.Limits(max_connections=80, max_keepalive_connections=0),
+            headers={"User-Agent": "FailoverProxy/0.1"})
+
+    @asynccontextmanager
+    async def provider_client(self, provider, config=None):
+        """Lease a credential-aware client; rotation never closes active requests."""
+        try:
+            if provider.get('proxy_id') and config is None:
+                config = await asyncio.to_thread(self.store.get_config, True)
+            profile = resolve_proxy(config or {}, provider.get('proxy_id'))
+            key = proxy_fingerprint(profile)
+            entry = self.proxy_clients.get(key)
+            if profile is not None and entry is None:
+                entry = {'client': self._new_client(profile), 'id': profile['id'], 'users': 0, 'retired': False}
+        except (ValueError, ImportError):
+            raise GatewayError('outbound_proxy_unavailable', 502, False) from None
+        if profile is None:
+            yield self.client
+            return
+        retired = []
+        for old_key, old in list(self.proxy_clients.items()):
+            if old_key != key and old['id'] == profile['id']:
+                retired.append(self.proxy_clients.pop(old_key))
+        self.proxy_clients[key] = entry
+        self.proxy_clients.move_to_end(key)
+        entry['users'] += 1
+        while len(self.proxy_clients) > 32:
+            _, old = self.proxy_clients.popitem(last=False)
+            retired.append(old)
+        for old in retired:
+            old['retired'] = True
+            self._retired_proxy_clients.append(old)
+        try:
+            for old in retired:
+                if not old['users']:
+                    await old['client'].aclose()
+                    self._retired_proxy_clients.remove(old)
+            yield entry['client']
+        finally:
+            entry['users'] -= 1
+            if entry['retired'] and not entry['users']:
+                await entry['client'].aclose()
+                self._retired_proxy_clients.remove(entry)
+
     async def close(self):
         await self.client.aclose()
+        entries = list(self.proxy_clients.values()) + self._retired_proxy_clients
+        self.proxy_clients.clear()
+        self._retired_proxy_clients = []
+        for entry in entries:
+            await entry['client'].aclose()
 
     def runtime(self):
         return {id: {"cooldown_until": ts} for id, ts in self.cooldowns.items()}
 
-    async def test_provider(self, provider, settings):
+    async def test_provider(self, provider, settings, config=None):
         start = time.monotonic()
         try:
             url, headers, extensions = await destination(provider["base_url"] + "/models", settings["trust_private_upstreams"])
             headers["Authorization"] = "Bearer " + provider["api_key"]
-            async with self.client.stream("GET", url, headers=headers, extensions=extensions, timeout=10) as r:
+            async with self.provider_client(provider, config) as client, client.stream("GET", url, headers=headers, extensions=extensions, timeout=10) as r:
                 return {"ok": r.status_code == 200, "status": r.status_code, "latency_ms": round((time.monotonic()-start)*1000),
                         **({"error_kind": "upstream_http_error"} if r.status_code != 200 else {})}
         except (GatewayError, httpx.HTTPError, TimeoutError):
@@ -338,7 +396,7 @@ class Engine:
                         url, headers, extensions = await destination(p["base_url"] + "/chat/completions", settings["trust_private_upstreams"])
                         headers.update({"Authorization": "Bearer " + p["api_key"], "Content-Type": "application/json", "Accept-Encoding":"identity"})
                         timeout = httpx.Timeout(settings["read_timeout_s"], connect=settings["connect_timeout_s"])
-                        async with self.client.stream("POST", url, json=outgoing, headers=headers, extensions=extensions, timeout=timeout) as response:
+                        async with self.provider_client(p, config) as client, client.stream("POST", url, json=outgoing, headers=headers, extensions=extensions, timeout=timeout) as response:
                             event["http_status"] = response.status_code
                             if response.status_code != 200:
                                 diagnostic_payload = await read_error(response)

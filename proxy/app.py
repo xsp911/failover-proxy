@@ -181,6 +181,8 @@ def create_app(data_dir=None, transport=None):
     app.state.inflight=inflight
     app.state.admission=admission
 
+    from .ip_allowlist import APIIPAllowlistMiddleware
+    app.add_middleware(APIIPAllowlistMiddleware, store=store)
     app.add_middleware(SecurityHeadersMiddleware)
 
     @app.exception_handler(HTTPException)
@@ -318,6 +320,33 @@ def create_app(data_dir=None, transport=None):
         monitor.wake.set()
         return result
 
+    proxy_checks=set()
+
+    @app.get('/admin/access')
+    async def api_access_info(request:Request):
+        await session(request)
+        config=await asyncio.to_thread(store.get_config)
+        return {'client_ip':request.client.host if request.client else None,
+                'api_access':config.get('api_access',{'enabled':False,'allowed_ips':[]}),
+                'forwarded_headers_trusted':False,'scope':'/v1/*'}
+
+    @app.post('/admin/proxies/{proxy_id}/check')
+    async def outbound_proxy_check(proxy_id:str,request:Request):
+        await session(request,True)
+        await body_json(request,1024)
+        if proxy_id in proxy_checks or len(proxy_checks)>=3:
+            return error('proxy_check_in_progress',409)
+        from .outbound_proxy import resolve_proxy
+        from .proxy_check import check_proxy
+        try:
+            config=await asyncio.to_thread(store.get_config,True)
+            profile=resolve_proxy(config,proxy_id)
+            if profile is None:return error('outbound_proxy_not_found',404)
+        except ValueError:return error('outbound_proxy_not_found',404)
+        proxy_checks.add(proxy_id)
+        try:return await check_proxy(profile,transport=transport)
+        finally:proxy_checks.discard(proxy_id)
+
     @app.get("/admin/stats")
     async def stats(request:Request,period:str="day"):
         await session(request)
@@ -336,7 +365,7 @@ def create_app(data_dir=None, transport=None):
         pat,user_id=a6.secret()
         if pat is None:return error('a6_not_configured',400)
         try:
-            return await a6_tokens(pat,user_id)
+            return await a6_tokens(pat,user_id,transport=transport,proxy=a6.proxy())
         except MarketplaceError as e:
             return error(e.kind,502)
 
@@ -374,7 +403,8 @@ def create_app(data_dir=None, transport=None):
                 current_pat,current_user=a6.secret()
                 if current_pat is None:raise ValueError('a6_pat_required')
                 pat=current_pat
-            result=await asyncio.to_thread(a6.save,pat,user_id)
+            proxy_options={'proxy_id':data['proxy_id']} if 'proxy_id' in data else {}
+            result=await asyncio.to_thread(a6.save,pat,user_id,**proxy_options)
         except (ValueError,TypeError) as e:
             return error(str(e) if isinstance(e,ValueError) else 'invalid_a6_settings',400)
         return result
@@ -390,9 +420,12 @@ def create_app(data_dir=None, transport=None):
                 if pat is None:raise ValueError('a6_pat_required')
                 if user_id is None:user_id=stored_user
             pat,user_id=a6.validate(pat,user_id)
+            from .outbound_proxy import resolve_proxy
+            config=await asyncio.to_thread(store.get_config,True)
+            profile=resolve_proxy(config,data.get('proxy_id',a6.proxy_id))
         except (ValueError,TypeError) as e:
             return error(str(e) if isinstance(e,ValueError) else 'invalid_a6_settings',400)
-        return await a6_verify_credentials(pat,user_id)
+        return await a6_verify_credentials(pat,user_id,transport=transport,proxy=profile)
 
     @app.delete('/admin/a6')
     async def a6_clear(request:Request):

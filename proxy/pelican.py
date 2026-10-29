@@ -10,6 +10,8 @@ import httpx
 
 from .engine import Completion,GatewayError,destination,parse_sse,usage_values
 from .pelican_store import PelicanStore
+from .outbound_proxy import resolve_proxy
+from .proxy_transport import async_client
 
 TIMEOUT_SECONDS=300
 MAX_OUTPUT_TOKENS=16000
@@ -121,7 +123,13 @@ class PelicanManager:
         from .provider_policy import apply_provider_policy
         payload=apply_provider_policy(payload,provider)
         timeout=httpx.Timeout(300,connect=min(20,settings['connect_timeout_s']),read=300)
-        async with httpx.AsyncClient(transport=self.transport,trust_env=False,follow_redirects=False) as client:
+        try:
+            config=await asyncio.to_thread(self.store.get_config,True) if provider.get('proxy_id') else {}
+            profile=resolve_proxy(config,provider.get('proxy_id'))
+            client=async_client(profile,self.transport,limits=httpx.Limits(max_keepalive_connections=0))
+        except ValueError:
+            raise GatewayError('outbound_proxy_unavailable',502,False) from None
+        async with client:
             async with client.stream('POST',url,headers=headers,extensions=extensions,json=payload,timeout=timeout) as response:
                 if response.status_code!=200:raise GatewayError('upstream_http_'+str(response.status_code),502)
                 if response.headers.get('content-encoding','identity').lower() not in ('identity',''):raise GatewayError('compressed_upstream_response')

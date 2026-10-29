@@ -44,7 +44,7 @@ async def test_save_masks_and_never_returns_pat(tmp_path):
         r = await c.put('/admin/a6', json={'pat': PAT, 'user_id': 23984}, headers=h)
         assert r.status_code == 200, r.text
         body = r.json()
-        assert body == {'configured': True, 'has_pat': True, 'pat_masked': 'SYNT********00', 'user_id': 23984}
+        assert body == {'configured': True, 'has_pat': True, 'pat_masked': 'SYNT********00', 'user_id': 23984, 'proxy_id': None}
         assert PAT not in r.text
         again = (await c.get('/admin/a6', headers=h)).json()
         assert PAT not in json.dumps(again)
@@ -64,7 +64,7 @@ async def test_blank_pat_keeps_secret_and_clear_removes(tmp_path):
         assert r.status_code == 200 and r.json()['user_id'] == 24000
         assert app.state.a6.secret() == (PAT, 24000)
         cleared = (await c.delete('/admin/a6', headers=h)).json()
-        assert cleared == {'configured': False, 'has_pat': False, 'pat_masked': '', 'user_id': None}
+        assert cleared == {'configured': False, 'has_pat': False, 'pat_masked': '', 'user_id': None, 'proxy_id': None}
         assert app.state.a6.secret() == (None, None)
         assert (await c.put('/admin/a6', json={'pat': '', 'user_id': 23984}, headers=h)).status_code == 400
     await app.state.monitor.close()
@@ -96,7 +96,7 @@ async def test_verify_success_and_mismatch(tmp_path):
     from proxy import a6_settings
     original = a6_settings.verify
 
-    async def fake_verify(pat, user_id):
+    async def fake_verify(pat, user_id, **kwargs):
         return await original(pat, user_id, transport=httpx.MockTransport(upstream))
 
     a6_settings_verify = app.state.a6

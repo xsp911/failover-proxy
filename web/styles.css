@@ -1,4 +1,7 @@
 /* Standalone UI: local system fonts, zero third-party assets. */
+/* Proxy and access settings retain native controls, keyboard focus and narrow layouts. */
+.proxy-choice{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:10px;min-width:0}.proxy-choice>label:not(.toggle-label){display:grid;gap:7px}.proxy-choice select{width:100%;min-width:0}.proxy-card .editor-actions{flex-wrap:wrap}.proxy-card .provider-bottom{flex-wrap:wrap}.proxy-card .test-result{overflow-wrap:anywhere}.proxy-card .fields-grid>.toggle-label{grid-column:1/-1}.ip-allowlist-label{display:grid;gap:8px;margin:20px 0 12px}#api-access-ips{box-sizing:border-box;display:block;width:100%;min-width:0;resize:vertical;padding:12px;border:1px solid var(--control-border);border-radius:8px;background:var(--bg);color:var(--text);font:14px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;transition:border-color .18s,box-shadow .18s}#api-access-ips:focus-visible{outline:2px solid var(--green);outline-offset:4px}#access-client-ip{margin-top:16px;overflow-wrap:anywhere}#settings-proxies>.notice{margin-bottom:20px}@media(max-width:550px){.proxy-choice{padding:12px}.proxy-card .editor-actions .button{flex:1;min-height:38px}.proxy-card .editor-heading{align-items:start}.proxy-card .provider-bottom .button{width:100%}}
+
 /* Design tokens — three layers: primitive (raw values) → semantic (roles) → component (usage).
    Raw hex lives only in the primitive layer; rules and JS read var(--token). */
 :root{
@@ -132,3 +135,58 @@ label,.field-label{font-size:12px;font-weight:500;line-height:1.55;color:#c9d1df
 .nav-subtab.active{background:var(--accent-dim);border-color:#354366;color:#d7e0ff}
 .settings-nav-group{padding:12px 12px 4px;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
 .settings-nav-group:first-child{padding-top:4px}
+
+/* Provider editor: scan compact summaries; disclose connection details on demand. */
+#provider-editor .provider-card{padding:18px 20px}
+#provider-editor .provider-card>.editor-heading{margin:0;align-items:center}
+.provider-summary{margin-top:4px;overflow-wrap:anywhere}
+#provider-editor .provider-card .editor-heading-left{min-width:0}
+#provider-editor .provider-card .editor-heading-left h3{font-size:15px}
+#provider-editor .provider-card .editor-actions{flex-shrink:0}
+.provider-edit{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.provider-edit>summary{cursor:pointer;min-height:32px;display:list-item;list-style-position:inside;font-size:12px;color:var(--blue);font-weight:550;padding-block:5px}
+.provider-edit[open]>summary{margin-bottom:16px}
+.provider-edit .fields-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.provider-network,.provider-edit .provider-routing{margin-top:14px;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--ink-925)}
+.provider-network>summary{cursor:pointer;font-size:12px;font-weight:550}
+.provider-network[open]>summary{margin-bottom:12px}
+.provider-network .proxy-choice{margin-top:0}
+.provider-save-error{margin:14px 0 0}
+.provider-changed{border-color:#687bb1}
+#provider-editor .provider-card .button.destructive{background:#542631;border-color:#a54b5d;color:#ffe1e7}
+#provider-editor .provider-card .button.destructive:hover{background:#733444;border-color:#d06c80}
+#provider-editor .provider-card .provider-bottom{margin-top:16px;gap:12px;flex-wrap:wrap}
+@media(max-width:650px){#provider-editor .provider-card{padding:16px}#provider-editor .provider-card>.editor-heading{align-items:flex-start;gap:14px}#provider-editor .provider-card .editor-actions{width:100%;justify-content:flex-end}#provider-editor .provider-card .editor-actions .toggle-label{margin-right:auto}.provider-edit .fields-grid{grid-template-columns:1fr}#provider-editor .provider-card .button{min-height:40px}#provider-editor .provider-card .editor-heading-left{width:100%}}
+
+.model-card>.editor-heading{margin-bottom:0;align-items:center}
+.model-card>.editor-heading>div:first-child{min-width:0;overflow-wrap:anywhere}
+.model-edit{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.model-edit>summary,.model-metadata>summary{cursor:pointer;min-height:36px;padding-block:7px;color:var(--blue);font-size:12px}
+.model-edit[open]>summary{margin-bottom:14px}
+.model-metadata{padding:12px 14px;background:var(--ink-925);border:1px solid var(--line);border-radius:8px;margin-top:16px}
+.model-metadata[open]>summary{margin-bottom:12px}
+.section-save-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.section-save-bar>span{font-size:12px;color:var(--muted)}
+.model-card .button.destructive{background:#542631;border-color:#a54b5d;color:#ffe1e7}
+@media(max-width:650px){.model-card>.editor-heading{align-items:flex-start}.model-card .editor-actions{width:100%;justify-content:flex-end}.section-save-bar .button{min-height:42px}}
+
+.sidebar-project{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;margin-top:16px;font-size:12px}
+.sidebar-project a{color:var(--text);font-weight:550;white-space:nowrap}
+.sidebar-project a:hover{text-decoration:underline;color:var(--blue)}
+.sidebar-project>span{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Single navigation rail: no nested settings menu, content starts beside sidebar. */
+main{width:100%;max-width:1770px;margin-left:0;margin-right:auto}
+.settings-layout{display:block;margin-top:20px}
+.settings-body{width:100%;min-width:0}
+.main-nav .nav-group-label{margin:16px 0 4px;padding:0 13px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.main-nav .nav-tab{min-height:44px;padding:9px 12px;gap:10px}
+.main-nav .nav-tab .nav-copy small{display:none}
+.main-nav .nav-direct{padding-left:12px}
+.workspace-sidebar .sidebar-bottom{padding-top:18px}
+#settings-view>.page-heading>div:first-child{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#settings-view>.page-heading{justify-content:flex-end;margin-bottom:12px}
+#settings-view>.page-heading:has(#config-actions[hidden]){display:none}
+#settings-view .settings-section>.section-title:first-child{margin-top:0}
+@media(min-width:1770px){main{padding-left:42px;padding-right:42px}}
+@media(max-width:760px){.main-nav .nav-tab{min-height:44px}.main-nav .nav-group-label{margin-top:12px}.settings-layout{display:block}.sidebar-shortcut{display:none}}

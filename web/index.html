@@ -81,7 +81,6 @@
   <path d="m8 21-4-4 4-4" />
   <path d="M4 17h16" />
 </svg></span><div><strong>Failover Proxy</strong><span>Панель управления</span></div></a>
-      <div class="nav-group-label">Управление</div>
       <nav class="main-nav" aria-label="Раздел панели"><button id="tab-stats" class="nav-tab active" type="button" aria-current="page"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
@@ -100,7 +99,7 @@
   <path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15" />
   <path d="M4 18.463V21" />
   <path d="M8 14.656V21" />
-</svg><span class="nav-copy"><strong>Обзор</strong><small>Сводка шлюза</small></span></button><button id="tab-settings" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>Обзор</strong><small>Сводка шлюза</small></span></button><div class="nav-section" role="group" aria-labelledby="nav-group-gateway"><div id="nav-group-gateway" class="nav-group-label">Шлюз</div><button id="tab-settings" data-settings="providers" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -116,7 +115,7 @@
   <path d="M19 7h-9" />
   <circle cx="17" cy="17" r="3" />
   <circle cx="7" cy="7" r="3" />
-</svg><span class="nav-copy"><strong>Шлюз</strong><small>Поставщики · модели · лимиты</small></span><i id="dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые изменения"></i></button><button id="tab-access" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>Поставщики</strong><small>Подключения и приоритеты</small></span><i id="dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые изменения"></i></button><button class="nav-tab nav-direct" type="button" data-settings="models"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="15" width="6" height="6" rx="1.5"/><path d="M15 6h3a3 3 0 0 1 3 3v2M9 18H6a3 3 0 0 1-3-3v-2M9 6h3M12 18h3"/></svg><span class="nav-copy"><strong>Модели и маршруты</strong></span></button><button class="nav-tab nav-direct" type="button" data-settings="proxies"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01M12 7h5M12 18h5M12 10v4"/></svg><span class="nav-copy"><strong>Прокси-серверы</strong></span></button><button class="nav-tab nav-direct" type="button" data-settings="general"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3M18 5l2-2"/></svg><span class="nav-copy"><strong>Лимиты и таймауты</strong></span></button></div><div class="nav-section" role="group" aria-labelledby="nav-group-access"><div id="nav-group-access" class="nav-group-label">Доступ</div><button id="tab-access" data-settings="keys" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -130,7 +129,7 @@
 >
   <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
   <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
-</svg><span class="nav-copy"><strong>Доступ</strong><small>Ключи и вход</small></span></button><button id="tab-detector" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>Ключи API</strong><small>Доступ приложений</small></span></button><button class="nav-tab nav-direct" type="button" data-settings="api-access"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z"/><path d="m8 12 3 3 5-6"/></svg><span class="nav-copy"><strong>Белый список IP</strong></span></button><button class="nav-tab nav-direct" type="button" data-settings="account"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><span class="nav-copy"><strong>Логин и пароль</strong></span></button></div><div class="nav-section" role="group" aria-labelledby="nav-group-checks"><div id="nav-group-checks" class="nav-group-label">Проверки</div><button id="tab-detector" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -144,7 +143,22 @@
 >
   <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
   <path d="m9 12 2 2 4-4" />
-</svg><span class="nav-copy"><strong>Проверки</strong><small>Мониторинг и журнал</small></span><i id="detector-dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые настройки проверок"></i></button><button id="tab-detector-log" class="nav-subtab" type="button">Журнал проверок</button><button id="tab-market" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>Проверка моделей</strong><small>Мониторинг и журнал</small></span><i id="detector-dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые настройки проверок"></i></button><button id="tab-detector-log" class="nav-tab nav-direct" type="button"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 12h8M8 16h6"/></svg><span class="nav-copy"><strong>Журнал проверок</strong></span></button><button id="tab-pelican" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z" />
+  <path d="M16 8 2 22" />
+  <path d="M17.488 15H9" />
+</svg><span class="nav-copy"><strong>Пеликан</strong><small>Визуальная проба</small></span></button></div><div class="nav-section" role="group" aria-labelledby="nav-group-a6"><div id="nav-group-a6" class="nav-group-label">A6API</div><button id="tab-market" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -161,23 +175,8 @@
   <rect x="9" y="2" width="6" height="6" rx="1" />
   <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
   <path d="M12 12V8" />
-</svg><span class="nav-copy"><strong>A6API</strong><small>Пулы и учётные данные</small></span></button><button id="tab-pelican" class="nav-tab" type="button"><svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z" />
-  <path d="M16 8 2 22" />
-  <path d="M17.488 15H9" />
-</svg><span class="nav-copy"><strong>Пеликан</strong><small>Визуальная проба</small></span></button></nav>
-      <div class="sidebar-bottom"><span class="mode-pill"><span class="status-dot"></span> Полный ответ · без live-токенов</span><span class="sidebar-shortcut">Alt + 1–7 <span>Переключить раздел</span></span></div>
+</svg><span class="nav-copy"><strong>Пулы A6API</strong><small>Пулы и учётные данные</small></span></button><button class="nav-tab nav-direct" type="button" data-settings="a6"><svg class="ui-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M18 5l3 3"/></svg><span class="nav-copy"><strong>Доступ к A6API</strong></span></button></div></nav>
+      <div class="sidebar-bottom"><span class="mode-pill"><span class="status-dot"></span> Полный ответ · без live-токенов</span><div class="sidebar-project"><a href="https://github.com/xsp911/failover-proxy" target="_blank" rel="noopener noreferrer">Failover Proxy</a><span id="sidebar-version" aria-label="Версия приложения">—</span></div></div>
     </aside>
     <button id="nav-overlay" class="nav-overlay" type="button" aria-label="Закрыть навигацию" tabindex="-1"></button>
     <header class="topbar"><div class="topbar-context"><button id="nav-toggle" class="icon-button nav-toggle" type="button" aria-label="Открыть навигацию" aria-controls="workspace-nav" aria-expanded="false"><svg
@@ -317,12 +316,14 @@
         <div class="page-heading"><div><h1 id="settings-title">Шлюз</h1><p id="settings-subtitle">Поставщики, модели и ограничения одного API.</p></div><div class="heading-actions" id="config-actions"><button id="reload-config" class="button secondary" type="button">Перезагрузить</button><button id="save-config" class="button primary" type="submit" form="config-form" disabled>Сохранить изменения</button></div></div>
         <div id="config-state" class="section-meta" role="status">Загрузка конфигурации…</div>
         <div id="config-error" class="notice danger" role="alert" hidden></div>
-        <div class="settings-layout"><nav class="settings-nav" aria-label="Шлюз и доступ"><div class="settings-nav-group">Шлюз</div><button type="button" data-settings="providers" aria-current="page">Поставщики <span id="provider-count">0</span></button><button type="button" data-settings="models">Модели <span id="model-count">0</span></button><button type="button" data-settings="general">Ограничения</button><div class="settings-nav-group">Доступ</div><button type="button" data-settings="keys">Ключи доступа</button><button type="button" data-settings="account">Учётная запись</button><div class="settings-nav-group">A6API</div><button type="button" data-settings="a6">Учётные данные A6API</button><div class="sidebar-note"><span class="status-dot"></span><strong>Один протокол</strong><p>Только OpenAI Chat Completions. Полный ответ, без live-токенов.</p></div></nav>
+        <div class="settings-layout"><span id="provider-count" hidden>0</span><span id="model-count" hidden>0</span>
           <div class="settings-body">
             <form id="config-form"><fieldset id="config-fieldset" disabled><legend class="sr-only">Конфигурация прокси</legend>
-              <section id="settings-providers" class="settings-section"><div class="section-title"><div><h2>Цепочка поставщиков</h2><p class="small">Укажите URL, ключ и порядок переключения. Политика OpenRouter — в дополнительных настройках карточки.</p></div><button id="add-provider" type="button" class="button secondary">+ Поставщик</button></div><div id="provider-editor" class="editor-stack"></div><div class="notice info"><strong>Тест проверяет только upstream /models.</strong> Успешная проверка не гарантирует доступность генерации. Для теста сначала сохраните поставщика.</div></section>
-              <section id="settings-models" class="settings-section" hidden><div class="section-title"><div><h2>Модели и маршруты</h2><p class="small">Клиент использует алиас, поставщик — свою модель.</p></div><button id="add-model" type="button" class="button secondary">+ Модель</button></div><div id="model-editor" class="editor-stack"></div></section>
-              <section id="settings-general" class="settings-section" hidden><div class="section-title"><div><h2>Ограничения и таймауты</h2><p class="small">Защита ресурсов и предсказуемое переключение.</p></div></div><div class="panel general-panel"><div id="general-fields" class="fields-grid"></div><div class="fixed-setting"><div><strong>Полная буферизация ответа</strong><p class="small">Фиксированный режим. Клиент получает только законченный успешный ответ.</p></div><span class="badge">Включена</span></div><label class="trust-setting"><input id="trust-private" type="checkbox"><span><strong>Разрешить приватные upstream-адреса</strong><span class="small">По умолчанию выключено. Включайте только для доверенной внутренней инфраструктуры; это ослабляет защиту от SSRF.</span></span></label></div></section>
+              <section id="settings-providers" class="settings-section"><div class="section-title"><div><h2>Поставщики</h2><p class="small">Меньший приоритет используется раньше. Раскройте подключение для правок — кнопка сохранения появится в его карточке.</p></div><button id="add-provider" type="button" class="button secondary">+ Поставщик</button></div><div id="provider-editor" class="editor-stack"></div><div id="provider-deletions" class="section-save-bar" hidden><span>Удалённые поставщики пока остаются на сервере.</span><button id="save-provider-deletions" class="button destructive" type="button">Применить удаления</button></div><div class="notice info"><strong>Тест проверяет только upstream /models.</strong> Успешная проверка не гарантирует доступность генерации. Для теста сначала сохраните поставщика.</div></section>
+              <section id="settings-models" class="settings-section" hidden><div class="section-title"><div><h2>Модели и маршруты</h2><p class="small">Клиент использует алиас, поставщик — свою модель.</p></div><button id="add-model" type="button" class="button secondary">+ Модель</button></div><div id="model-editor" class="editor-stack"></div><div id="model-deletions" class="section-save-bar" hidden><span>Удалённые модели пока остаются на сервере.</span><button id="save-model-deletions" class="button destructive" type="button">Применить удаления</button></div></section>
+              <section id="settings-general" class="settings-section" hidden><div class="section-title"><div><h2>Ограничения и таймауты</h2><p class="small">Защита ресурсов и предсказуемое переключение.</p></div></div><div class="panel general-panel"><div id="general-fields" class="fields-grid"></div><div class="section-save-bar"><button id="save-general" class="button primary" type="button" hidden>Сохранить лимиты</button><span id="general-save-error" class="small" role="alert"></span></div><div class="fixed-setting"><div><strong>Полная буферизация ответа</strong><p class="small">Фиксированный режим. Клиент получает только законченный успешный ответ.</p></div><span class="badge">Включена</span></div><label class="trust-setting"><input id="trust-private" type="checkbox"><span><strong>Разрешить приватные upstream-адреса</strong><span class="small">По умолчанию выключено. Включайте только для доверенной внутренней инфраструктуры; это ослабляет защиту от SSRF.</span></span></label></div></section>
+              <section id="settings-proxies" class="settings-section" hidden aria-labelledby="proxies-title"><div class="section-title"><div><h2 id="proxies-title">Исходящие прокси</h2><p class="small">Общие профили для поставщиков и A6API. Создание, порядок и удаление применяются кнопкой «Сохранить прокси» в этом разделе.</p></div><button id="add-proxy" type="button" class="button secondary">+ Профиль</button></div><div class="notice info"><strong>Проверка делает внешний запрос для определения исходящего IP.</strong> Платная генерация моделей не вызывается. Проверяется только сохранённый профиль; сначала сохраните изменения.</div><div id="proxy-editor" class="editor-stack"></div><div class="section-save-bar"><button id="save-proxies" class="button primary" type="button" hidden>Сохранить прокси</button><span id="proxies-save-error" class="small" role="alert"></span></div></section>
+              <section id="settings-api-access" class="settings-section" hidden aria-labelledby="api-access-title"><div class="section-title"><div><h2 id="api-access-title">IP-доступ к клиентскому API</h2><p class="small">Ограничение применяется только к /v1, не к административной панели.</p></div></div><div class="panel general-panel"><label class="toggle-label"><input id="api-access-enabled" type="checkbox"><span>Включить список разрешённых IP</span></label><label class="ip-allowlist-label">Разрешённые IP и сети<textarea id="api-access-ips" rows="7" spellcheck="false" autocomplete="off" aria-describedby="api-access-hint" placeholder="192.0.2.10&#10;192.168.1.1/24&#10;2001:db8::/32"></textarea></label><p id="api-access-hint" class="small">Одна запись на строку: IPv4, IPv6 или CIDR. Сервер нормализует сети: 192.168.1.1/24 станет 192.168.1.0/24. Используется IP прямого соединения; заголовки X-Forwarded-For и Forwarded не считаются доверенными. Изменения применяются общей кнопкой сохранения.</p><p id="access-client-ip" class="small" role="status">IP текущего соединения ещё не загружен.</p><div class="detector-actions"><button id="refresh-access-ip" class="button secondary" type="button">Показать текущий IP</button></div></div></section>
             </fieldset></form>
             <section id="settings-keys" class="settings-section" hidden><div class="section-title"><div><h2>Ключи клиентского API</h2><p class="small">Отдельный доступ для каждого приложения.</p></div><button id="refresh-keys" class="button secondary" type="button">Обновить</button></div><div class="panel key-create-panel"><h3>Создать ключ</h3><form id="key-form"><div class="fields-grid"><label>Название<input id="key-name" name="name" required maxlength="160" placeholder="Например, приложение production"></label><div><span class="field-label" id="key-model-label">Доступ к моделям</span><div id="key-models" class="model-checkboxes" role="group" aria-labelledby="key-model-label"></div><p class="small">Ничего не выбрано — все модели, включая добавленные позже.</p></div></div><button id="create-key" class="button primary" type="submit">Создать ключ</button></form></div><div id="keys-error" class="notice danger" role="alert" hidden></div><div id="keys-list" class="editor-stack"><div class="panel empty">Загрузка ключей…</div></div><p class="small key-footnote">Полный токен показывается один раз. Здесь доступны только префиксы. Ключи не экспортируются и не сохраняются в браузере.</p></section>
             <section id="settings-account" class="settings-section" hidden aria-labelledby="account-title">
@@ -396,6 +397,7 @@
         <form id="a6-form"><div class="fields-grid">
           <label class="field-full">PAT-ключ<input id="a6-pat" type="password" autocomplete="off" maxlength="512" placeholder="Вставьте PAT консоли"></label>
           <label>ID аккаунта<input id="a6-user-id" type="number" min="1" max="2147483647" step="1" placeholder="23984"></label>
+          <div class="proxy-choice field-full"><label class="toggle-label"><input id="a6-use-proxy" type="checkbox"><span>Работать через прокси</span></label><label>Сохранённый профиль прокси<select id="a6-proxy-id" disabled><option value="">Выберите профиль</option></select></label><p class="small">Только сохранённые профили из настроек шлюза. «Проверить доступ» использует текущий выбор формы, даже до сохранения A6API.</p></div>
         </div>
         <p id="a6-pat-state" class="small"></p>
         <div class="detector-actions"><button id="a6-save" class="button primary" type="submit">Сохранить</button><button id="a6-verify" class="button secondary" type="button">Проверить доступ</button><button id="a6-clear" class="button subtle" type="button">Удалить учётные данные</button></div>
