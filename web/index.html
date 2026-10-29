@@ -81,21 +81,6 @@
   <path d="m8 21-4-4 4-4" />
   <path d="M4 17h16" />
 </svg></span><div><strong>Failover Proxy</strong><span>Панель управления</span></div></a>
-      <div class="workspace-switch"><span class="workspace-avatar">FP</span><div><strong>Рабочее пространство</strong><span>AI API Infrastructure</span></div><svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m7 15 5 5 5-5" />
-  <path d="m7 9 5-5 5 5" />
-</svg></div>
       <div class="nav-group-label">Управление</div>
       <nav class="main-nav" aria-label="Раздел панели"><button id="tab-stats" class="nav-tab active" type="button" aria-current="page"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
@@ -115,7 +100,51 @@
   <path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15" />
   <path d="M4 18.463V21" />
   <path d="M8 14.656V21" />
-</svg><span class="nav-copy"><strong>Статистика</strong><small>Обзор шлюза</small></span></button><button id="tab-market" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>Обзор</strong><small>Сводка шлюза</small></span></button><button id="tab-settings" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 17H5" />
+  <path d="M19 7h-9" />
+  <circle cx="17" cy="17" r="3" />
+  <circle cx="7" cy="7" r="3" />
+</svg><span class="nav-copy"><strong>Шлюз</strong><small>Поставщики · модели · лимиты</small></span><i id="dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые изменения"></i></button><button id="tab-access" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+  <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+</svg><span class="nav-copy"><strong>Доступ</strong><small>Ключи и вход</small></span></button><button id="tab-detector" class="nav-tab" type="button"><svg
+  class="ui-icon" aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+  <path d="m9 12 2 2 4-4" />
+</svg><span class="nav-copy"><strong>Проверки</strong><small>Мониторинг и журнал</small></span><i id="detector-dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые настройки проверок"></i></button><button id="tab-detector-log" class="nav-subtab" type="button">Журнал проверок</button><button id="tab-market" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -132,37 +161,7 @@
   <rect x="9" y="2" width="6" height="6" rx="1" />
   <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
   <path d="M12 12V8" />
-</svg><span class="nav-copy"><strong>A6API</strong><small>Пулы каналов</small></span></button><button id="tab-detector" class="nav-tab" type="button"><svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-  <path d="m9 12 2 2 4-4" />
-</svg><span class="nav-copy"><strong>Проверки моделей</strong><small>Контроль качества</small></span><i id="detector-dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые настройки проверок"></i></button><button id="tab-detector-log" class="nav-tab" type="button"><svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M15 12h-5" />
-  <path d="M15 8h-5" />
-  <path d="M19 17V5a2 2 0 0 0-2-2H4" />
-  <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
-</svg><span class="nav-copy"><strong>Журнал проверок</strong><small>История изменений</small></span></button><button id="tab-pelican" class="nav-tab" type="button"><svg
+</svg><span class="nav-copy"><strong>A6API</strong><small>Пулы и учётные данные</small></span></button><button id="tab-pelican" class="nav-tab" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -177,24 +176,8 @@
   <path d="M14.086 18.412A2 2 0 0112.67 19H5v-7.672a2 2 0 01.586-1.414L11.75 3.75a6 6 0 118.49 8.49z" />
   <path d="M16 8 2 22" />
   <path d="M17.488 15H9" />
-</svg><span class="nav-copy"><strong>Пеликан</strong><small>Визуальная проба</small></span></button><button id="tab-settings" class="nav-tab" type="button"><svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M14 17H5" />
-  <path d="M19 7h-9" />
-  <circle cx="17" cy="17" r="3" />
-  <circle cx="7" cy="7" r="3" />
-</svg><span class="nav-copy"><strong>Настройки</strong><small>Конфигурация</small></span><i id="dirty-dot" class="dirty-dot" hidden aria-label="Есть несохранённые изменения"></i></button></nav>
-      <div class="sidebar-bottom"><span class="mode-pill"><span class="status-dot"></span> Полный ответ · без live-токенов</span><p>Клиент получает только завершённый ответ. Failover остаётся внутри шлюза.</p><span class="sidebar-shortcut">Alt + 1–6 <span>Переключить раздел</span></span></div>
+</svg><span class="nav-copy"><strong>Пеликан</strong><small>Визуальная проба</small></span></button></nav>
+      <div class="sidebar-bottom"><span class="mode-pill"><span class="status-dot"></span> Полный ответ · без live-токенов</span><span class="sidebar-shortcut">Alt + 1–7 <span>Переключить раздел</span></span></div>
     </aside>
     <button id="nav-overlay" class="nav-overlay" type="button" aria-label="Закрыть навигацию" tabindex="-1"></button>
     <header class="topbar"><div class="topbar-context"><button id="nav-toggle" class="icon-button nav-toggle" type="button" aria-label="Открыть навигацию" aria-controls="workspace-nav" aria-expanded="false"><svg
@@ -212,7 +195,7 @@
   <path d="M4 5h16" />
   <path d="M4 12h16" />
   <path d="M4 19h16" />
-</svg></button><div><span class="breadcrumb">Рабочее пространство / <strong id="active-page-title">Статистика</strong></span><p id="active-page-description">Состояние шлюза и фактический трафик</p></div></div><div class="topbar-right"><span id="health-badge" class="badge neutral">Проверка системы</span><span id="session-user" class="user-name"></span><button id="logout" class="button subtle small-button" type="button"><svg
+</svg></button><div><strong id="active-page-title" class="topbar-title">Обзор шлюза</strong><p id="active-page-description">Запросы, переключения и фактический расход ресурсов.</p></div></div><div class="topbar-right"><span id="health-badge" class="badge neutral">Проверка системы</span><span id="session-user" class="user-name"></span><button id="logout" class="button subtle small-button" type="button"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -331,24 +314,10 @@
         </div>
       </section>
       <section id="settings-view" hidden aria-labelledby="settings-title">
-        <div class="page-heading"><div><h1 id="settings-title">Настройки</h1><p>Поставщики, модели и ограничения одного API.</p></div><div class="heading-actions"><button id="reload-config" class="button secondary" type="button">Перезагрузить</button><button id="save-config" class="button primary" type="submit" form="config-form" disabled>Сохранить изменения</button></div></div>
+        <div class="page-heading"><div><h1 id="settings-title">Шлюз</h1><p id="settings-subtitle">Поставщики, модели и ограничения одного API.</p></div><div class="heading-actions" id="config-actions"><button id="reload-config" class="button secondary" type="button">Перезагрузить</button><button id="save-config" class="button primary" type="submit" form="config-form" disabled>Сохранить изменения</button></div></div>
         <div id="config-state" class="section-meta" role="status">Загрузка конфигурации…</div>
         <div id="config-error" class="notice danger" role="alert" hidden></div>
-        <div class="settings-layout"><nav class="settings-nav" aria-label="Настройки"><button type="button" data-settings="providers" aria-current="page">Поставщики <span id="provider-count">0</span></button><button type="button" data-settings="models">Модели <span id="model-count">0</span></button><button type="button" data-settings="general">Ограничения</button><button type="button" data-settings="keys">Ключи доступа <svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M7 7h10v10" />
-  <path d="M7 17 17 7" />
-</svg></button><button type="button" data-settings="a6">A6API</button><button type="button" data-settings="account">Учётная запись</button><div class="sidebar-note"><span class="status-dot"></span><strong>Один протокол</strong><p>Только OpenAI Chat Completions. Полный ответ, без live-токенов.</p></div></nav>
+        <div class="settings-layout"><nav class="settings-nav" aria-label="Шлюз и доступ"><div class="settings-nav-group">Шлюз</div><button type="button" data-settings="providers" aria-current="page">Поставщики <span id="provider-count">0</span></button><button type="button" data-settings="models">Модели <span id="model-count">0</span></button><button type="button" data-settings="general">Ограничения</button><div class="settings-nav-group">Доступ</div><button type="button" data-settings="keys">Ключи доступа</button><button type="button" data-settings="account">Учётная запись</button><div class="settings-nav-group">A6API</div><button type="button" data-settings="a6">Учётные данные A6API</button><div class="sidebar-note"><span class="status-dot"></span><strong>Один протокол</strong><p>Только OpenAI Chat Completions. Полный ответ, без live-токенов.</p></div></nav>
           <div class="settings-body">
             <form id="config-form"><fieldset id="config-fieldset" disabled><legend class="sr-only">Конфигурация прокси</legend>
               <section id="settings-providers" class="settings-section"><div class="section-title"><div><h2>Цепочка поставщиков</h2><p class="small">Укажите URL, ключ и порядок переключения. Политика OpenRouter — в дополнительных настройках карточки.</p></div><button id="add-provider" type="button" class="button secondary">+ Поставщик</button></div><div id="provider-editor" class="editor-stack"></div><div class="notice info"><strong>Тест проверяет только upstream /models.</strong> Успешная проверка не гарантирует доступность генерации. Для теста сначала сохраните поставщика.</div></section>
@@ -371,20 +340,6 @@
                 <div class="detector-actions"><button id="account-save" class="button primary" type="submit">Сохранить учётные данные</button></div>
               </form></div>
             </section>
-            <section id="settings-a6" class="settings-section" hidden><div class="section-title"><div><h2>A6API</h2><p class="small">PAT и ID аккаунта для Marketplace.</p></div><button id="a6-reload" class="button secondary" type="button">Перезагрузить</button></div>
-      <div class="notice warning"><strong>PAT — это пароль консоли.</strong> Он даёт доступ к аккаунту, токенам и пинам. Хранится зашифрованным на сервере; в браузере и журналах не сохраняется. Relay-ключ <code>sk-…</code> здесь не подходит.</div>
-      <div id="a6-error" class="notice danger" role="alert" hidden></div>
-      <section class="panel"><div class="panel-heading"><div><h2>Учётные данные</h2><p class="small">ID аккаунта — число из профиля кабинета, не relay-ключ.</p></div><span id="a6-badge" class="badge neutral">Не настроено</span></div>
-        <form id="a6-form"><div class="fields-grid">
-          <label class="field-full">PAT-ключ<input id="a6-pat" type="password" autocomplete="off" maxlength="512" placeholder="Вставьте PAT консоли"></label>
-          <label>ID аккаунта<input id="a6-user-id" type="number" min="1" max="2147483647" step="1" placeholder="23984"></label>
-        </div>
-        <p id="a6-pat-state" class="small"></p>
-        <div class="detector-actions"><button id="a6-save" class="button primary" type="submit">Сохранить</button><button id="a6-verify" class="button secondary" type="button">Проверить доступ</button><button id="a6-clear" class="button subtle" type="button">Удалить учётные данные</button></div>
-        <p id="a6-verify-result" class="small" role="status"></p>
-        </form>
-      </section>
-            </section>
           </div>
         </div>
       </section>
@@ -402,8 +357,9 @@
         <section class="panel pelican-panel pelican-gallery"><div class="panel-heading"><div><h2>Генерации</h2><p class="small">Статус и этап — не процент готовности. Предпросмотр появляется после получения безопасного SVG.</p></div></div><div id="pelican-runs" class="pelican-runs" aria-live="polite"><p class="empty">Генераций пока нет.</p></div></section>
       </section>
       <section id="market-view" class="workspace-view" hidden aria-labelledby="market-title">
-        <div class="page-heading"><div><h1 id="market-title">A6API</h1><p>Независимая политика для каждого пула, модели и токена. PAT — в Настройки → A6API.</p></div></div>
-        <div id="market-pools-panel">
+        <div class="page-heading"><div><h1 id="market-title">A6API</h1><p>Независимая политика для каждого пула, модели и токена. PAT — в подвкладке «Учётные данные».</p></div></div>
+        <nav id="a6-tabs" class="view-tabs" role="tablist" aria-label="Разделы A6API"><button id="a6-tab-pools" type="button" role="tab" aria-controls="market-pools-panel" aria-selected="true">Пулы</button><button id="a6-tab-creds" type="button" role="tab" aria-controls="market-creds-panel" aria-selected="false" tabindex="-1">Учётные данные</button></nav>
+        <div id="market-pools-panel" role="tabpanel" aria-labelledby="a6-tab-pools">
           <details class="a6-safety"><summary>Как работают проверки и ограничения</summary><p>Отбор продавцов бесплатный. Проверка отправляет платные запросы через отдельные тестовые ключи. Fingerprint оценивает сходство с эталоном, не доказывает подлинность. Публикация меняет рабочий маршрут; fallback выключен. Автоматический режим включается только явно.</p><div id="pools-capabilities" class="notice warning" role="status"></div></details>
           <div id="pools-error" class="notice danger" role="alert" hidden></div>
           <div class="section-meta"><span id="pools-status" role="status"></span><div><button id="pools-refresh" type="button" class="button secondary">Обновить</button><button id="pool-new" type="button" class="button primary">+ Создать пул</button></div></div>
@@ -432,11 +388,28 @@
             </fieldset></form><p id="pool-form-state" class="small" role="status"></p></details>
           </div>
         </div>
+        <div id="market-creds-panel" role="tabpanel" aria-labelledby="a6-tab-creds" hidden>
+          <section id="settings-a6" class="settings-section"><div class="section-title"><div><h2>A6API</h2><p class="small">PAT и ID аккаунта для Marketplace.</p></div><button id="a6-reload" class="button secondary" type="button">Перезагрузить</button></div>
+      <div class="notice warning"><strong>PAT — это пароль консоли.</strong> Он даёт доступ к аккаунту, токенам и пинам. Хранится зашифрованным на сервере; в браузере и журналах не сохраняется. Relay-ключ <code>sk-…</code> здесь не подходит.</div>
+      <div id="a6-error" class="notice danger" role="alert" hidden></div>
+      <section class="panel"><div class="panel-heading"><div><h2>Учётные данные</h2><p class="small">ID аккаунта — число из профиля кабинета, не relay-ключ.</p></div><span id="a6-badge" class="badge neutral">Не настроено</span></div>
+        <form id="a6-form"><div class="fields-grid">
+          <label class="field-full">PAT-ключ<input id="a6-pat" type="password" autocomplete="off" maxlength="512" placeholder="Вставьте PAT консоли"></label>
+          <label>ID аккаунта<input id="a6-user-id" type="number" min="1" max="2147483647" step="1" placeholder="23984"></label>
+        </div>
+        <p id="a6-pat-state" class="small"></p>
+        <div class="detector-actions"><button id="a6-save" class="button primary" type="submit">Сохранить</button><button id="a6-verify" class="button secondary" type="button">Проверить доступ</button><button id="a6-clear" class="button subtle" type="button">Удалить учётные данные</button></div>
+        <p id="a6-verify-result" class="small" role="status"></p>
+        </form>
+      </section>
+            </section>
+        </div>
       </section>
       <section id="detector-view" class="workspace-view" hidden aria-labelledby="detector-title">
-        <div class="page-heading"><div><h1 id="detector-title">Проверки моделей</h1><p>Ручная проверка и отдельный мониторинг upstream-маршрутов.</p></div><button id="refresh-detector" class="button secondary" type="button">Обновить результаты</button></div>
+        <div class="page-heading" id="detector-heading"><div><h1 id="detector-title">Проверки моделей</h1><p>Ручная проверка и отдельный мониторинг upstream-маршрутов.</p></div><button id="refresh-detector" class="button secondary" type="button">Обновить результаты</button></div>
         <div id="detector-error" class="notice danger" role="alert" hidden></div><div id="detector-warning" class="notice warning" role="status" hidden></div>
         <div class="section-meta"><span id="detector-status" role="status">Загрузка проверок…</span><span id="detector-polling">Обновление при открытой вкладке</span></div>
+        <div id="detector-monitor-panel">
         <section class="panel detector-panel"><div class="panel-heading"><div><h2>Мониторинг</h2><p class="small">По умолчанию выключен. Настройки независимы от ручных проверок.</p></div><span id="detector-threshold-badge" class="badge neutral">Порог —</span></div>
           <div id="detector-settings-error" class="notice danger" role="alert" hidden></div><form id="detector-settings-form"><fieldset id="detector-settings-fieldset" disabled><legend class="sr-only">Настройки мониторинга моделей</legend><div class="detector-monitor-controls"><label class="toggle-label"><input id="detector-enabled" type="checkbox"> Включить мониторинг</label><label>Интервал, минуты<input id="detector-interval" type="number" min="5" max="1440" step="1" value="30" required></label><label>Порог совпадения, %<input id="detector-threshold" type="number" min="50" max="100" step="0.1" value="95" required></label><div><p id="detector-next-run" class="small"></p><p id="detector-settings-state" class="small" role="status"></p></div></div>
           <p class="small">Добавьте нужные upstream-модели каждому поставщику. Пустая строка без эталона не включается в мониторинг. Можно добавить несколько целей. Отключённые вручную поставщики автоматически не включаются.</p>
@@ -447,8 +420,8 @@
         <section class="panel table-panel detector-panel"><div class="panel-heading"><div><h2>Задания</h2><p class="small">До 3 поставщиков проверяются параллельно; у одного поставщика — по одному тесту. Прогресс 0–3 относится только к текущему раунду. Низкая оценка требует второго полного раунда. Диагностика содержит счётчики и виды ошибок, без текстов проб.</p></div></div><div id="detector-jobs" class="detector-job-list" aria-live="polite"></div></section>
         <section class="panel table-panel detector-panel"><div class="panel-heading"><div><h2>Состояния маршрутов</h2><p class="small">Статус последней определённой проверки; последняя попытка и её ошибки — отдельно.</p></div></div><div class="table-scroll"><table><caption class="sr-only">Результаты проверок моделей</caption><thead><tr><th>Поставщик</th><th>Upstream-модель / эталон</th><th>Статус</th><th>Вероятность эталона</th><th>Предсказание / вероятность</th><th>Последняя попытка</th><th>Время</th></tr></thead><tbody id="detector-states"></tbody></table></div></section>
         <p id="detector-catalog" class="small"></p>
-      </section>
-      <section id="detector-log-view" hidden aria-labelledby="detector-log-title"><div class="page-heading"><div><h1 id="detector-log-title">Журнал проверок</h1><p>Только изменения определённого статуса; последние 100 записей.</p></div><button id="refresh-detector-log" class="button secondary" type="button">Обновить журнал</button></div><div class="notice info">Повторные проверки с тем же статусом не записываются. Ошибки и неопределённые результаты не означают подмену и не меняют последний определённый статус. Вероятность закрытого набора — не доказательство подлинности.</div><div id="detector-log-error" class="notice danger" role="alert" hidden></div><p id="detector-log-status" class="small" role="status"></p><section class="panel table-panel detector-panel"><div class="table-toolbar"><label class="table-search"><svg
+        </div>
+        <section id="detector-log-view" class="view-panel" aria-labelledby="detector-log-title" hidden><div class="view-panel-head"><div><h2 id="detector-log-title">Журнал проверок</h2><p class="small">Только изменения определённого статуса; последние 100 записей.</p></div><button id="refresh-detector-log" class="button secondary" type="button">Обновить журнал</button></div><div class="notice info">Повторные проверки с тем же статусом не записываются. Ошибки и неопределённые результаты не означают подмену и не меняют последний определённый статус. Вероятность закрытого набора — не доказательство подлинности.</div><div id="detector-log-error" class="notice danger" role="alert" hidden></div><p id="detector-log-status" class="small" role="status"></p><section class="panel table-panel detector-panel"><div class="table-toolbar"><label class="table-search"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
