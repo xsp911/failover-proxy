@@ -50,7 +50,7 @@ const token = 'sk-created-' + 'fedcba9876543210'.repeat(10);
     const openAccount = async () => {
       await page.goto(origin + '/');
       await page.locator('#app').waitFor({state: 'visible'});
-      await page.locator('#tab-settings').click();
+      await page.locator('#tab-preferences').click();
       await page.locator('[data-settings="account"]').click();
       await page.locator('#settings-account').waitFor({state: 'visible'});
     };
@@ -117,11 +117,11 @@ const token = 'sk-created-' + 'fedcba9876543210'.repeat(10);
     // Full stored prefix remains readable at desktop/mobile; no pretend recoverable token.
     await openAccount(); await page.locator('[data-settings="keys"]').click(); await page.locator('.key-prefix').waitFor();
     assert.equal(await page.locator('.key-prefix').innerText(), prefix);
-    assert.equal(await page.locator('.key-prefix-label').innerText(), 'Префикс ключа · полный ключ показывается только при создании');
+    assert.match(await page.locator('.key-reveal-note').innerText(), /Старый ключ.*полный текст недоступен/);
     for (const width of [1440, 390]) {
       await page.setViewportSize({width, height: 1000});
       const dimensions = await page.locator('.key-prefix').evaluate(node => ({width: node.getBoundingClientRect().width, parent: node.parentElement.getBoundingClientRect().width, ellipsis: getComputedStyle(node).textOverflow, family: getComputedStyle(node).fontFamily, page: document.documentElement.scrollWidth, viewport: innerWidth}));
-      assert.ok(dimensions.width >= dimensions.parent - 2, 'prefix fills its card');
+      assert.ok(dimensions.width > 0 && dimensions.width <= dimensions.parent + 1, 'prefix stays within compact token line');
       assert.notEqual(dimensions.ellipsis, 'ellipsis'); assert.match(dimensions.family, /monospace/);
       assert.ok(dimensions.page <= dimensions.viewport + 1, 'long prefix does not widen page');
     }

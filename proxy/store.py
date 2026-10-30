@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 DEFAULT_SETTINGS = {
     "request_timeout_s": 180,
@@ -149,6 +149,10 @@ class Store:
                     prefix TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL,
                     created_at TEXT NOT NULL, enabled INTEGER NOT NULL,
                     models TEXT NOT NULL, requests INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS api_key_secrets (
+                    key_id TEXT PRIMARY KEY REFERENCES api_keys(id) ON DELETE CASCADE,
+                    encrypted_token TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS requests (
                     id TEXT PRIMARY KEY, ts REAL NOT NULL,
@@ -395,8 +399,12 @@ class Store:
 
     def list_keys(self) -> list[dict]:
         with self._connection() as conn:
-            return [self._key_metadata(row) for row in conn.execute(
-                "SELECT * FROM api_keys ORDER BY created_at,id")]
+            return [{**self._key_metadata(row), "can_reveal": bool(row["has_secret"])}
+                    for row in conn.execute("""SELECT api_keys.*,
+                        api_key_secrets.key_id IS NOT NULL AS has_secret
+                        FROM api_keys LEFT JOIN api_key_secrets
+                        ON api_key_secrets.key_id=api_keys.id
+                        ORDER BY api_keys.created_at,api_keys.id""")]
 
     def create_key(self, name: str, models: list) -> dict:
         token = "fp-" + secrets.token_urlsafe(48)
@@ -404,8 +412,44 @@ class Store:
         with self._connection() as conn:
             conn.execute("INSERT INTO api_keys VALUES(?,?,?,?,?,?,?,0)", (
                 key_id, name, token[:11], _hash(token), _iso(time.time()), 1, _json(models)))
+            conn.execute("INSERT INTO api_key_secrets VALUES(?,?)", (
+                key_id, self._fernet.encrypt(token.encode()).decode()))
             row = conn.execute("SELECT * FROM api_keys WHERE id=?", (key_id,)).fetchone()
         return {"key": self._key_metadata(row), "token": token}
+
+    def reveal_key(self, id: str) -> str | None:
+        """Read a retained secret without altering key state or authentication."""
+        with self._connection() as conn:
+            row = conn.execute("""SELECT token_hash,encrypted_token FROM api_keys
+                JOIN api_key_secrets ON api_key_secrets.key_id=api_keys.id
+                WHERE api_keys.id=?""", (id,)).fetchone()
+        if row is None:
+            return None
+        try:
+            token = self._fernet.decrypt(row["encrypted_token"].encode()).decode()
+            matches = hmac.compare_digest(_hash(token), row["token_hash"])
+        except (InvalidToken, UnicodeError, AttributeError, TypeError, ValueError):
+            raise ValueError("client_key_secret_unavailable") from None
+        if not matches:
+            raise ValueError("client_key_secret_unavailable") from None
+        return token
+
+    def retain_key_secret(self, token: str) -> bool:
+        """Retain a known legacy token only when its hash matches an existing key.
+
+        Disabled keys remain eligible. Existing retained secrets are never replaced.
+        """
+        if not isinstance(token, str):
+            return False
+        with self._connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT id FROM api_keys WHERE token_hash=?",
+                               (_hash(token),)).fetchone()
+            if row is None:
+                return False
+            return bool(conn.execute("""INSERT INTO api_key_secrets(key_id,encrypted_token)
+                VALUES(?,?) ON CONFLICT(key_id) DO NOTHING""", (
+                    row["id"], self._fernet.encrypt(token.encode()).decode())).rowcount)
 
     def update_key(self, id: str, enabled: bool) -> bool:
         with self._connection() as conn:

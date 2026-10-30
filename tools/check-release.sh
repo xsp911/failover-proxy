@@ -9,10 +9,12 @@ if [[ ! -x "$PYTHON" ]]; then
   exit 2
 fi
 contracts=(
+  tests/browser-settings-navigation.cjs
+  tests/browser-request-journal.cjs
   tests/browser-feedback.cjs
   tests/browser-proxy-access.cjs
   tests/browser-provider-editor.cjs
-  tests/browser-provider-health.cjs
+  tests/browser-overview-compact.cjs
   tests/browser-scoped-settings.cjs
   tests/browser-detector.cjs
   tests/browser-a6.cjs

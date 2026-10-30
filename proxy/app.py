@@ -504,6 +504,15 @@ def create_app(data_dir=None, transport=None):
             return error("unknown_model")
         return await asyncio.to_thread(store.create_key,name.strip(),models)
 
+    @app.post('/admin/keys/{key_id}/reveal')
+    async def reveal_key(key_id:str,request:Request):
+        await session(request,True)
+        await body_json(request,1024)
+        try:token=await asyncio.to_thread(store.reveal_key,key_id)
+        except ValueError:return error('key_secret_unavailable',409)
+        if token is None:return error('key_secret_unavailable',409)
+        return JSONResponse({'token':token},headers={'Cache-Control':'no-store, private','Pragma':'no-cache'})
+
     @app.patch("/admin/keys/{key_id}")
     async def update_key(key_id:str,request:Request):
         await session(request,True)
