@@ -213,88 +213,26 @@
     <main id="workspace-main" tabindex="-1">
       <div id="global-notice" class="notice" role="status" aria-live="polite" hidden><span id="global-message"></span><button id="dismiss-notice" type="button" aria-label="Закрыть сообщение">×</button></div>
       <section id="stats-view" aria-labelledby="stats-title">
-        <div class="page-heading"><div><h1 id="stats-title">Обзор шлюза</h1><p>Запросы, переключения и фактический расход ресурсов.</p></div><div class="period" role="group" aria-label="Период статистики"><button type="button" data-period="hour" aria-pressed="false">Час</button><button type="button" data-period="day" aria-pressed="true">Сутки</button><button type="button" data-period="week" aria-pressed="false">Неделя</button><button type="button" data-period="month" aria-pressed="false">Месяц</button></div></div>
-        <div class="section-meta"><span id="stats-status" role="status">Загрузка статистики…</span><div><span id="polling-status">Обновление каждые 15 секунд</span><button id="refresh-stats" class="icon-button" aria-label="Обновить статистику" type="button">↻</button></div></div>
+        <div class="page-heading"><div><h1 id="stats-title">Обзор шлюза</h1><p>Запросы, переключения и фактический расход ресурсов.</p></div></div>
+        <div class="status-line">
+          <div class="status-line-main"><span class="status-dot" aria-hidden="true"></span><span id="stats-status" role="status">Загрузка статистики…</span><span class="status-sep" aria-hidden="true">·</span><span id="stats-counters">активных — · в очереди —</span></div>
+          <div class="status-line-right"><div class="period" role="group" aria-label="Период статистики"><button type="button" data-period="hour" aria-pressed="false">Час</button><button type="button" data-period="day" aria-pressed="true">Сутки</button><button type="button" data-period="week" aria-pressed="false">Неделя</button><button type="button" data-period="month" aria-pressed="false">Месяц</button></div><span id="polling-status" class="status-poll">Обновление каждые 15 секунд</span><button id="refresh-stats" class="icon-button" aria-label="Обновить статистику" type="button">↻</button></div>
+        </div>
         <div id="stats-error" class="notice danger" role="alert" hidden></div>
         <div id="stats-content" aria-busy="true">
-          <div class="metrics">
-            <article class="metric-card"><div class="metric-label">Клиентские запросы <svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M7 7h10v10" />
-  <path d="M7 17 17 7" />
-</svg></div><strong id="metric-requests">—</strong><span id="metric-success" class="metric-description">Итог каждого запроса</span></article>
-            <article class="metric-card red"><div class="metric-label">Итоговые ошибки <svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
-  <path d="M12 9v4" />
-  <path d="M12 17h.01" />
-</svg></div><strong id="metric-errors">—</strong><span class="metric-description">После всех попыток</span></article>
-            <article class="metric-card blue"><div class="metric-label">Переключения <svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="m16 3 4 4-4 4" />
-  <path d="M20 7H4" />
-  <path d="m8 21-4-4 4-4" />
-  <path d="M4 17h16" />
-</svg></div><strong id="metric-switches">—</strong><span class="metric-description">Переходы между поставщиками</span></article>
-            <article class="metric-card amber"><div class="metric-label">Всего токенов <svg
-  class="ui-icon" aria-hidden="true" focusable="false"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M13.744 17.736a6 6 0 1 1-7.48-7.48" />
-  <path d="M15 6h1v4" />
-  <path d="m6.134 14.768.866-.5 2 3.464" />
-  <circle cx="16" cy="8" r="6" />
-</svg></div><strong id="metric-tokens">—</strong><span class="metric-description">Только фактический usage</span></article>
-          </div>
-          <section class="panel activity-sources" aria-labelledby="activity-sources-title"><div class="panel-heading"><div><h2 id="activity-sources-title">Источники активности</h2><p class="small">Клиентский трафик и независимые проверки учитываются отдельно.</p></div><span id="activity-sources-status" class="small" role="status">Загрузка…</span></div><div id="activity-sources" class="activity-sources-grid"></div><p id="activity-sources-note" class="small">Отсутствие клиентского трафика не означает, что мониторинг простаивает. Окна учёта источников могут различаться; показатели не складываются.</p></section>
-          <details id="capability-evidence" class="panel"><summary>Наблюдения возможностей каналов и контекста</summary><p class="small">Только реальные уже выполненные запросы. Принятый max_tokens — не доказанный потолок. Оценка контекста приблизительная, запросы не блокирует.</p><button id="capability-refresh" class="button secondary" type="button">Загрузить наблюдения</button><div id="capability-results" class="small" aria-live="polite"></div></details>
-          <div class="chart-layout">
-            <section class="panel chart-panel"><div class="panel-heading"><div><h2>Активность запросов</h2><p class="small">Попытки к поставщикам за выбранный период</p></div><div class="legend"><span>Запросы</span><span>Ошибки</span><span>Переходы</span></div></div><div id="activity-chart" class="chart" role="img" aria-label="График активности"><div class="empty">Загрузка графика…</div></div><div id="chart-axis" class="chart-axis"></div></section>
-            <section class="panel"><div class="panel-heading"><div><h2>Потоки токенов</h2><p class="small">Вход, выход и кеш</p></div><span class="badge neutral">USAGE</span></div><div id="token-breakdown" class="token-breakdown"><div class="empty">Загрузка…</div></div><p class="small token-note">«—» означает, что поставщик не передал usage. Пропущенные значения не оцениваются.</p></section>
-          </div>
-          <section class="panel performance-panel"><div class="panel-heading"><div><h2>Время и производительность</h2><p class="small">Замеры шлюза, не сети до браузера</p></div><span class="badge neutral">BUFFERED</span></div><div id="performance" class="performance-grid"></div><details class="definitions"><summary>Как читать показатели</summary><p>TTFT поставщика — время до первых данных upstream. Первый ответ клиенту отправляется только после полной успешной генерации: токены не передаются в реальном времени. Ток/с — наблюдаемая скорость upstream, не гарантированная скорость модели. p50 / p95 — перцентили полной задержки.</p></details></section>
-          <div class="section-title"><div><h2>Поставщики</h2><p class="small">Меньше приоритет — раньше попытка</p></div><span class="small">Попытки ≠ клиентские запросы</span></div>
-          <section id="provider-stats" class="provider-grid" aria-label="Состояние поставщиков"><div class="empty panel">Загрузка поставщиков…</div></section>
-          <section class="panel table-panel"><div class="panel-heading"><div><h2>Детализация попыток</h2><p class="small">Каждое обращение к поставщику считается отдельно, включая неудачные повторы.</p></div></div><div class="table-scroll"><table><caption class="sr-only">Статистика попыток поставщиков</caption><thead><tr><th>Поставщик</th><th>Попытки</th><th>Успешные</th><th>Ошибки</th><th>Переходы</th><th>IN / OUT</th><th>Кеш чтение / запись</th><th>Успешность</th><th>Среднее, мс</th><th>TTFT, мс</th><th>Клиент, мс</th><th>Ток/с</th><th>p50 / p95, мс</th></tr></thead><tbody id="provider-table"></tbody></table></div></section>
-          <section class="panel table-panel"><div class="panel-heading"><div><h2>Последние запросы</h2><p class="small">Итоговый статус после всех попыток · без промптов и ответов</p></div></div><div class="table-toolbar"><label class="table-search"><svg
+          <section class="kpi" aria-label="Ключевые показатели за период">
+            <article class="kpi-main"><span class="kpi-label">Клиентские запросы</span><strong id="metric-requests">—</strong><span id="metric-success" class="kpi-note">Итог каждого запроса</span></article>
+            <div class="kpi-rest">
+              <article class="kpi-item"><span>Ошибки</span><strong id="metric-errors">—</strong><small>после всех попыток</small></article>
+              <article class="kpi-item"><span>Переключения</span><strong id="metric-switches">—</strong><small>между поставщиками</small></article>
+              <article class="kpi-item"><span>Токены</span><strong id="metric-tokens">—</strong><small>фактический usage</small></article>
+              <article class="kpi-item"><span>Успешность</span><strong id="metric-success-rate">—</strong><small id="metric-success-note">из клиентских ответов</small></article>
+              <article class="kpi-item"><span>p95 задержки</span><strong id="metric-p95">—</strong><small id="metric-p95-note">перцентиль полной задержки</small></article>
+            </div>
+          </section>
+          <section class="panel chart-panel" aria-labelledby="chart-title"><div class="panel-heading"><div><h2 id="chart-title">Активность запросов</h2><p class="small">Попытки к поставщикам за выбранный период</p></div><div class="legend"><span>Запросы</span><span>Ошибки</span><span>Переходы</span></div></div><div id="activity-chart" class="chart" role="img" aria-label="График активности"><div class="empty">Загрузка графика…</div></div><div id="chart-axis" class="chart-axis"></div><div class="token-strip" aria-label="Токены за период"><div id="token-breakdown" class="token-breakdown"><div class="empty">Загрузка…</div></div></div><p class="small token-note">«—» означает, что поставщик не передал usage. Пропущенные значения не оцениваются.</p></section>
+          <section class="panel table-panel provider-panel" aria-labelledby="providers-title"><div class="panel-heading"><div><h2 id="providers-title">Поставщики</h2><p class="small">Меньше приоритет — раньше попытка. Строка раскрывается в детали периода: IN/OUT, кеш, ток/с, пауза.</p></div><span class="small">Попытки ≠ клиентские запросы</span></div><div class="table-scroll"><table class="provider-table"><caption class="sr-only">Статистика попыток поставщиков</caption><thead><tr><th class="col-index">№</th><th>Поставщик</th><th class="col-status">Статус</th><th class="col-attempts">Попытки</th><th class="col-errors">Ошибки</th><th class="col-success">Успешность</th><th class="col-average">Среднее, мс</th><th class="col-p95">p95, мс</th><th class="col-ttft">TTFT, мс</th></tr></thead><tbody id="provider-table"></tbody></table></div><div class="provider-evidence-head"><h3>Состояние связи</h3><p class="small">Модель, транспорт и оплата — независимые сигналы. Таблица выше считает период, здесь — причина состояния. Fingerprint оценивает сходство, не доказывает подлинность; HTTP 402 — сигнал оплаты или квоты, не измерение остатка.</p></div><section id="provider-stats" class="provider-evidence" aria-label="Состояние поставщиков"><div class="empty">Загрузка поставщиков…</div></section></section>
+          <div class="requests-grid"><section class="panel table-panel requests-panel" aria-labelledby="requests-title"><div class="panel-heading"><div><h2 id="requests-title">Последние запросы</h2><p class="small">Итоговый статус после всех попыток · без промптов и ответов</p></div></div><div class="table-toolbar"><label class="table-search"><svg
   class="ui-icon" aria-hidden="true" focusable="false"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
@@ -308,8 +246,8 @@
 >
   <path d="m21 21-4.34-4.34" />
   <circle cx="11" cy="11" r="8" />
-</svg><input id="request-search" type="search" placeholder="Поиск по модели, поставщику или ID" aria-label="Поиск запросов"></label><select id="request-filter" aria-label="Статус запроса"><option value="all">Все статусы</option><option value="success">Успешные</option><option value="error">Ошибки</option></select><select id="request-sort" aria-label="Сортировка запросов"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="provider">По поставщику</option><option value="latency">По задержке</option></select><span id="request-count" class="small"></span></div><div class="table-scroll"><table><caption class="sr-only">Последние клиентские запросы</caption><thead><tr><th>Время</th><th>Модель</th><th>Статус</th><th>Попытки</th><th>Поставщик</th><th>Время, мс</th><th>IN / OUT</th><th>ID запроса</th></tr></thead><tbody id="requests-table"></tbody></table></div></section>
-          <div class="bottom-grid"><section class="panel"><div class="panel-heading"><h2>Последние ошибки</h2><span class="small">Без секретов</span></div><div id="recent-errors"><div class="empty">Загрузка…</div></div></section><section class="panel about-panel"><div class="panel-heading"><h2>Прозрачный учёт</h2><span class="status-dot"></span></div><p>Один клиентский запрос может вызвать несколько попыток у разных поставщиков. Ошибка попытки не означает ошибку итогового ответа.</p><p>Ответ полностью буферизуется. При неудаче промежуточные данные не уходят клиенту; следующий поставщик начинает заново.</p><p id="coverage-note" class="small">Информация о покрытии загружается…</p></section></div>
+</svg><input id="request-search" type="search" placeholder="Поиск по модели, поставщику или ID" aria-label="Поиск запросов"></label><select id="request-filter" aria-label="Статус запроса"><option value="all">Все статусы</option><option value="success">Успешные</option><option value="error">Ошибки</option></select><select id="request-sort" aria-label="Сортировка запросов"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="provider">По поставщику</option><option value="latency">По задержке</option></select><span id="request-count" class="small"></span></div><div class="table-scroll"><table><caption class="sr-only">Последние клиентские запросы</caption><thead><tr><th>Время</th><th>Модель</th><th>Статус</th><th>Попытки</th><th>Поставщик</th><th>Время, мс</th><th>IN / OUT</th><th>ID запроса</th></tr></thead><tbody id="requests-table"></tbody></table></div></section><section class="panel errors-panel" aria-labelledby="errors-title"><div class="panel-heading"><h2 id="errors-title">Последние ошибки</h2><span class="small">Без секретов</span></div><div id="recent-errors"><div class="empty">Загрузка…</div></div></section></div>
+          <details id="how-it-computes" class="panel how-it-computes" open><summary>Как это считается</summary><p class="small">Замеры, источники и оговорки в одном месте: показатели выше считаются по разным окнам и не складываются.</p><section class="panel performance-panel" aria-labelledby="performance-title"><div class="panel-heading"><div><h2 id="performance-title">Время и производительность</h2><p class="small">Замеры шлюза, не сети до браузера</p></div><span class="badge neutral">BUFFERED</span></div><div id="performance" class="performance-grid"></div><details class="definitions"><summary>Как читать показатели</summary><p>TTFT поставщика — время до первых данных upstream. Первый ответ клиенту отправляется только после полной успешной генерации: токены не передаются в реальном времени. Ток/с — наблюдаемая скорость upstream, не гарантированная скорость модели. p50 / p95 — перцентили полной задержки.</p></details></section><section class="panel activity-sources" aria-labelledby="activity-sources-title"><div class="panel-heading"><div><h2 id="activity-sources-title">Источники активности</h2><p class="small">Клиентский трафик и независимые проверки учитываются отдельно.</p></div><span id="activity-sources-status" class="small" role="status">Загрузка…</span></div><div id="activity-sources" class="activity-sources-grid"></div><p id="activity-sources-note" class="small">Отсутствие клиентского трафика не означает, что мониторинг простаивает. Окна учёта источников могут различаться; показатели не складываются.</p></section><details id="capability-evidence" class="panel"><summary>Наблюдения возможностей каналов и контекста</summary><p class="small">Только реальные уже выполненные запросы. Принятый max_tokens — не доказанный потолок. Оценка контекста приблизительная, запросы не блокирует.</p><button id="capability-refresh" class="button secondary" type="button">Загрузить наблюдения</button><div id="capability-results" class="small" aria-live="polite"></div></details><section class="panel about-panel" aria-labelledby="about-title"><div class="panel-heading"><h2 id="about-title">Прозрачный учёт</h2><span class="status-dot"></span></div><p>Один клиентский запрос может вызвать несколько попыток у разных поставщиков. Ошибка попытки не означает ошибку итогового ответа.</p><p>Ответ полностью буферизуется. При неудаче промежуточные данные не уходят клиенту; следующий поставщик начинает заново.</p><p id="coverage-note" class="small">Информация о покрытии загружается…</p></section></details>
         </div>
       </section>
       <section id="settings-view" hidden aria-labelledby="settings-title">
