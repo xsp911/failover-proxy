@@ -17,6 +17,8 @@
   const pelican = { data: null, timer: null, controller: null, sequence: 0, busy: false, mutationController: null, signingOut: false, actionError: '', cancelling: new Set(), motionNodes: new Map() };
   const journal = { rows: [], search: '', filter: 'all', sort: 'newest', signature: '' };
   const requestsView = { search: '', filter: 'all', sort: 'newest', signature: '' };
+  // Expanded provider rows must survive the 15s poll: ids only, never DOM nodes.
+  const providersView = { expanded: new Set() };
   const pageLabels = {
     stats: ['Обзор шлюза', 'Запросы, переключения и фактический расход ресурсов.'],
     settings: ['Шлюз', 'Поставщики, модели и ограничения одного API.'],
@@ -411,7 +413,8 @@
         state.stats = stats.value;
         renderStats(stats.value);
         areaError('stats-error', '');
-        text('stats-status', 'Обновлено ' + date(stats.value.generated_at) + ' · время вашего браузера');
+        text('stats-status', 'Обновлено ' + date(stats.value.generated_at));
+        $('stats-status').title = 'Время показано в часовом поясе вашего браузера';
       } else {
         areaError('stats-error', 'Статистика недоступна. ' + (state.stats ? 'Показаны последние загруженные значения; они могли устареть. ' : '') + errorMessage(stats.reason));
         text('stats-status', 'Нет свежих данных · повтор через 15 секунд');
@@ -449,11 +452,79 @@
     const version = health.version ? 'v' + String(health.version).replace(/^v/, '') : '';
     text('version', version);
     text('sidebar-version', version || '—');
-    text('footer-health', 'Активных запросов: ' + number(health.active_requests) + (health.queued_requests == null ? '' : ' · В очереди: ' + number(health.queued_requests)) + ' · Полная буферизация');
+    // Counters belong to the one overview status line; the footer keeps the fixed mode only.
+    text('stats-counters', 'активных ' + number(health.active_requests) + (health.queued_requests == null ? '' : ' · в очереди ' + number(health.queued_requests)));
+    text('footer-health', 'Полная буферизация · никаких промежуточных ответов');
   }
   function providerFailureLabel(kind, status) {
     const labels = { upstream_http_402: 'Оплата или квота · HTTP 402', upstream_http_401: 'API-ключ отклонён · HTTP 401', upstream_http_403: 'Доступ запрещён · HTTP 403', upstream_http_429: 'Лимит запросов · HTTP 429', upstream_timeout: 'Поставщик не ответил вовремя', request_deadline: 'Истёк общий таймаут', upstream_connection: 'Нет соединения', dns_failure: 'Не удалось найти адрес', outbound_proxy_unavailable: 'Прокси недоступен', cancelled: 'Запрос отменён клиентом' };
     return labels[kind] || (Number(status) >= 500 ? 'Сбой поставщика · HTTP ' + status : 'Ошибка запроса' + (status ? ' · HTTP ' + status : ''));
+  }
+  function detailIdFor(id) { return 'provider-detail-' + String(id).replace(/[^A-Za-z0-9_-]/g, '-'); }
+  // Routing availability only. The cause of the state lives in the evidence rows below the table.
+  function providerOperational(provider) {
+    const cooldownAt = typeof provider.cooldown_until === 'number' ? provider.cooldown_until * 1000 : provider.cooldown_until;
+    const paused = cooldownAt != null && cooldownAt !== '' && new Date(cooldownAt).getTime() > Date.now();
+    const pause = paused ? 'до ' + date(cooldownAt) : 'нет';
+    if (!provider.enabled) return { label: 'Отключён', tone: 'neutral', pause };
+    if (provider.health?.quarantined) return { label: 'Карантин', tone: 'danger', pause };
+    if (paused) return { label: 'Пауза', tone: 'warning', pause };
+    return { label: 'Готов', tone: 'success', pause };
+  }
+  // One table row per provider; the row expands into period details instead of duplicating cards.
+  function renderProviderTable(providers, empty = 'За этот период поставщиков нет.') {
+    const body = $('provider-table');
+    if (!providers.length) {
+      const row = el('tr'), cell = el('td', 'empty', empty); cell.colSpan = 9; row.append(cell); body.replaceChildren(row); return;
+    }
+    const nodes = [];
+    providers.forEach((provider, index) => {
+      const phase = providerOperational(provider);
+      const id = String(provider.id ?? 'provider-' + index);
+      const detailId = detailIdFor(id), expanded = providersView.expanded.has(id);
+      const row = el('tr', 'provider-row'); row.dataset.provider = id;
+      const nameCell = el('td'), toggle = el('button', 'provider-toggle');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-controls', detailId);
+      toggle.append(el('span', 'chevron'), el('span', '', String(provider.name || 'Без имени')));
+      nameCell.append(toggle);
+      const statusCell = el('td', 'col-status'); statusCell.append(badge(phase.label, phase.tone));
+      row.append(el('td', 'col-index', String(index + 1).padStart(2, '0')), nameCell, statusCell,
+        el('td', 'numeric col-attempts', number(provider.requests)),
+        el('td', 'numeric col-errors', number(provider.errors)),
+        el('td', 'numeric col-success', percent(provider.success_rate)),
+        el('td', 'numeric col-average', number(provider.avg_latency_ms)),
+        el('td', 'numeric col-p95', number(provider.p95_ms)),
+        el('td', 'numeric col-ttft', number(provider.avg_ttft_ms)));
+      const detail = el('tr', 'provider-detail'); detail.id = detailId; detail.hidden = !expanded;
+      const holder = el('td'); holder.colSpan = 9;
+      const grid = el('div', 'provider-detail-grid');
+      const item = (title, value) => {
+        const box = el('div', 'provider-detail-item');
+        box.append(el('span', '', title), el('strong', '', value));
+        grid.append(box);
+      };
+      item('IN / OUT', number(provider.input_tokens) + ' / ' + number(provider.output_tokens));
+      item('Кеш · чтение / запись', number(provider.cache_read_tokens) + ' / ' + number(provider.cache_write_tokens));
+      item('Ток/с', number(provider.avg_tps));
+      item('Пауза', phase.pause);
+      item('Переходы', number(provider.switches));
+      item('Первый ответ клиенту, мс', number(provider.avg_client_ttft_ms));
+      item('p50, мс', number(provider.p50_ms));
+      item('Успешных попыток', number(provider.success));
+      holder.append(grid); detail.append(holder); nodes.push(row, detail);
+    });
+    body.replaceChildren(...nodes);
+  }
+  function toggleProviderRow(row) {
+    const id = row?.dataset.provider;
+    if (!id) return;
+    const expanded = providersView.expanded.has(id);
+    if (expanded) providersView.expanded.delete(id); else providersView.expanded.add(id);
+    const detail = $(detailIdFor(id));
+    if (detail) detail.hidden = expanded;
+    row.querySelector('.provider-toggle')?.setAttribute('aria-expanded', String(!expanded));
   }
   function renderProviderHealthCards(providers) {
     const opened = new Set([...$('provider-stats').querySelectorAll('details[open]')].map(item => item.dataset.providerHealth));
@@ -482,8 +553,6 @@
       line('Запросы', last ? (failing ? providerFailureLabel(last.error_kind, last.http_status) : last.status === 'success' ? 'Последний — успешный' : 'Последний — отменён') : 'Ещё не было', failing ? 'health-text-danger' : '');
       line('Оплата', payment ? 'Требуется проверка оплаты/квоты' : 'Баланс неизвестен', payment ? 'health-text-danger' : 'health-text-muted');
       card.append(rows);
-      const count = el('p', 'small provider-health-counts', 'За период: ' + number(provider.requests) + ' попыток · ' + number(provider.errors) + ' ошибок · ' + percent(provider.success_rate) + ' успеха');
-      card.append(count);
       if (Number(recent.errors) > 0) card.append(el('p', 'small provider-health-recent', 'Последние 15 мин: ' + number(recent.errors) + ' ошибок из ' + number(recent.attempts) + ' попыток' + (Number(recent.consecutive_errors) >= 2 ? ' · подряд ' + number(recent.consecutive_errors) : '')));
       const details = el('details', 'provider-health-details'); details.dataset.providerHealth = provider.id; details.open = opened.has(provider.id);
       details.append(el('summary', '', 'Модели и причины'));
@@ -500,19 +569,24 @@
       if (error) details.append(el('p', 'small', 'Последний сбой: ' + providerFailureLabel(error.error_kind, error.http_status) + ' · ' + date(error.ts)));
       if (last) details.append(el('p', 'small', 'Последняя попытка: ' + date(last.ts)));
       if (cooldown) details.append(el('p', 'small', 'Пауза до ' + date(cooldownAt)));
-      details.append(el('p', 'small', 'Fingerprint оценивает сходство, не доказывает подлинность. HTTP 402 — сигнал оплаты/квоты, не измерение остатка.'));
       card.append(details); return card;
     }));
+    if (!providers.length) $('provider-stats').replaceChildren(el('div', 'empty', 'Поставщиков пока нет. Добавьте первого в разделе «Поставщики».'));
   }
   function renderStats(data) {
     const summary = data.summary || {};
     text('metric-requests', number(summary.final_requests, true));
     $('metric-requests').title = number(summary.final_requests) + ' клиентских · ' + number(summary.requests) + ' попыток';
     text('metric-errors', number(summary.final_errors));
+    $('metric-errors').classList.toggle('deviation', Number(summary.final_errors) > 0);
     text('metric-switches', number(summary.switches));
     text('metric-tokens', number(summary.total_tokens, true));
     $('metric-tokens').title = number(summary.total_tokens);
-    text('metric-success', percent(summary.final_success_rate) + ' успешных · ' + number(summary.final_success) + ' ответов');
+    text('metric-success', number(summary.requests) + ' попытки к поставщикам');
+    text('metric-success-rate', percent(summary.final_success_rate));
+    text('metric-success-note', number(summary.final_success) + ' из ' + number(summary.final_requests) + ' ответов');
+    text('metric-p95', number(summary.p95_ms));
+    text('metric-p95-note', 'мс · p50 ' + number(summary.p50_ms));
     renderChart(Array.isArray(data.timeline) ? data.timeline : []);
     renderTokens(summary);
     const performance = [
@@ -528,9 +602,8 @@
       return item;
     }));
     const providers = Array.isArray(data.providers) ? [...data.providers].sort((a, b) => Number(a.priority) - Number(b.priority)) : [];
+    renderProviderTable(providers);
     renderProviderHealthCards(providers);
-    if (!providers.length) $('provider-stats').append(el('div', 'panel empty', 'Поставщиков пока нет. Добавьте первый в настройках.'));
-    renderTable('provider-table', providers.map(p => [p.name, number(p.requests), number(p.success), number(p.errors), number(p.switches), number(p.input_tokens) + ' / ' + number(p.output_tokens), number(p.cache_read_tokens) + ' / ' + number(p.cache_write_tokens), percent(p.success_rate), number(p.avg_latency_ms), number(p.avg_ttft_ms), number(p.avg_client_ttft_ms), number(p.avg_tps), number(p.p50_ms) + ' / ' + number(p.p95_ms)]), 13, 'За этот период попыток пока нет.');
     renderRequests();
     $('recent-errors').replaceChildren(...(data.recent_errors || []).map(error => {
       const row = el('div', 'error-row');
@@ -2764,6 +2837,11 @@
   });
   $('brand-link').addEventListener('click', event => { event.preventDefault(); switchTab('stats'); });
   $('refresh-stats').addEventListener('click', loadStats);
+  // Delegated so the 15s poll can replace rows without re-binding listeners.
+  $('provider-table').addEventListener('click', event => {
+    const row = event.target.closest('tr.provider-row');
+    if (row) toggleProviderRow(row);
+  });
   $('dismiss-notice').addEventListener('click', () => { $('global-notice').hidden = true; });
   for (const button of document.querySelectorAll('[data-period]')) button.addEventListener('click', () => {
     if (state.period === button.dataset.period) return;
@@ -2772,12 +2850,15 @@
     // Old-period numbers must never look like newly selected-period data.
     state.stats = null; requestsView.signature = '';
     if ($('request-count')) text('request-count', 'Загрузка…');
-    for (const id of ['metric-requests', 'metric-errors', 'metric-switches', 'metric-tokens']) text(id, '—');
+    for (const id of ['metric-requests', 'metric-errors', 'metric-switches', 'metric-tokens', 'metric-success-rate', 'metric-p95']) text(id, '—');
+    $('metric-errors').classList.remove('deviation');
     text('metric-success', 'Загрузка периода…');
+    text('metric-success-note', 'из клиентских ответов');
+    text('metric-p95-note', 'перцентиль полной задержки');
     $('activity-chart').replaceChildren(el('div', 'empty', 'Загрузка выбранного периода…'));
     $('chart-axis').replaceChildren();
     for (const id of ['token-breakdown', 'performance', 'provider-stats', 'recent-errors']) $(id).replaceChildren(el('div', 'empty', 'Загрузка…'));
-    renderTable('provider-table', [], 13, 'Загрузка…'); renderTable('requests-table', [], 8, 'Загрузка…');
+    renderProviderTable([], 'Загрузка…'); renderTable('requests-table', [], 8, 'Загрузка…');
     text('coverage-note', 'Информация о покрытии загружается…');
     void loadStats();
   });
