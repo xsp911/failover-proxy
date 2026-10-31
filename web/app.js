@@ -774,7 +774,7 @@
       outbound_proxies: (config.outbound_proxies || []).map(p => ({ id: p.id, name: p.name, scheme: p.scheme, host: p.host, port: p.port, username: p.username || '', has_password: p.has_password === true })),
       api_access: { enabled: config.api_access?.enabled === true, allowed_ips: Array.isArray(config.api_access?.allowed_ips) ? config.api_access.allowed_ips.filter(ip => typeof ip === 'string') : [] },
       providers: config.providers.map(p => ({ id: p.id, name: p.name, base_url: p.base_url, enabled: p.enabled === true, priority: p.priority, has_api_key: p.has_api_key === true, ...optionalFields(p, ['routing_mode', 'service_tier', 'provider_pin', 'proxy_id']) })),
-      models: config.models.map(m => ({ id: m.id, name: m.name, supports_vision: m.supports_vision === true, enabled: m.enabled === true, context_length: m.context_length ?? null, max_output_tokens: m.max_output_tokens ?? null, ...optionalFields(m, ['context_preflight']), routes: (m.routes || []).map(r => ({ provider_id: r.provider_id, upstream_model: r.upstream_model, enabled: r.enabled === true })) }))
+      models: config.models.map(m => ({ id: m.id, name: m.name, supports_vision: m.supports_vision === true, enabled: m.enabled === true, context_length: m.context_length ?? null, max_output_tokens: m.max_output_tokens ?? null, ...optionalFields(m, ['context_preflight']), routes: (m.routes || []).map(r => ({ provider_id: r.provider_id, upstream_model: r.upstream_model, enabled: r.enabled === true, ...optionalFields(r, ['supports_response_formats']) })) }))
     };
   }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -1069,8 +1069,19 @@
     catch (error) { if (epoch === state.epoch) text('access-client-ip', errorMessage(error)); }
     finally { if (epoch === state.epoch) $('refresh-access-ip').disabled = false; }
   }
+  function routeResponseFormats(route) {
+    const value = route.supports_response_formats;
+    if (value === true) return 'both';
+    if (value === false) return 'none';
+    if (!Array.isArray(value)) return '';
+    const schema = value.includes('json_schema'), object = value.includes('json_object');
+    if (schema && object) return 'both';
+    if (schema) return 'json_schema';
+    if (object) return 'json_object';
+    return 'none';
+  }
   function modelPayload(model) {
-    return { id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled })) };
+    return { id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled, ...optionalFields(route, ['supports_response_formats']) })) };
   }
   function renderModels() {
     if (!state.draft) return;
@@ -1125,11 +1136,25 @@
           if (!state.draft) return;
           model.routes.splice(index, 1); markDirty(); renderModels();
         });
-        row.append(label, upstream.label, toggle('Включён', route.enabled, value => { route.enabled = value; }), remove); routes.append(row);
+        const formats = selectField('response_format', routeResponseFormats(route), [
+          ['', 'Не задано · неизвестно'],
+          ['none', 'Не поддерживает'],
+          ['json_object', 'Только json_object'],
+          ['json_schema', 'Только json_schema'],
+          ['both', 'json_schema и json_object']
+        ], value => {
+          if (value === '') delete route.supports_response_formats;
+          else if (value === 'none') route.supports_response_formats = [];
+          else if (value === 'json_object') route.supports_response_formats = ['json_object'];
+          else if (value === 'json_schema') route.supports_response_formats = ['json_schema'];
+          else route.supports_response_formats = ['json_schema', 'json_object'];
+        });
+        formats.select.dataset.routeResponseFormats = model.id + ':' + index;
+        row.append(label, upstream.label, formats.label, toggle('Включён', route.enabled, value => { route.enabled = value; }), remove); routes.append(row);
       });
       if (!model.routes.length) routes.append(el('div', 'empty', 'Маршрутов нет. Добавьте хотя бы один для доступности модели.'));
       const advanced = el('details', 'model-metadata'); advanced.append(el('summary', '', 'Контекст и дополнительные возможности'), metadata, metadataNote);
-      editor.append(name.label, options, routeHeading, routes, advanced, el('p', 'small', 'Порядок попыток определяется приоритетами поставщиков. Vision — декларация возможностей; upstream должен поддерживать изображения.'));
+      editor.append(name.label, options, routeHeading, routes, advanced, el('p', 'small', 'Порядок попыток определяется приоритетами поставщиков. Vision — декларация возможностей; upstream должен поддерживать изображения. Паспорт response_format на маршруте: «Не задано» — прежний best effort; явный список исключает маршрут до вызова upstream, а если не осталось ни одного — клиент получает 400 response_format_unsupported.'));
       const localError = el('div', 'notice danger'); localError.hidden = true; localError.setAttribute('role', 'alert'); localError.dataset.modelError = model.id;
       card.append(heading, localError, editor);
       return card;
@@ -1158,7 +1183,7 @@
         if (provider.api_key?.trim()) result.api_key = provider.api_key;
         return result;
       }),
-      models: draft.models.map(model => ({ id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled })) }))
+      models: draft.models.map(model => ({ id: model.id, name: model.name.trim(), supports_vision: model.supports_vision, enabled: model.enabled, context_length: model.context_length ?? null, max_output_tokens: model.max_output_tokens ?? null, ...optionalFields(model, ['context_preflight']), routes: model.routes.map(route => ({ provider_id: route.provider_id, upstream_model: route.upstream_model.trim(), enabled: route.enabled, ...optionalFields(route, ['supports_response_formats']) })) }))
     };
   }
   function validateConfig() {

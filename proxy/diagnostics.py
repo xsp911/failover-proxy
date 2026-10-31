@@ -25,6 +25,7 @@ RESPONSE_FORMAT_PATTERNS = (
 TIMEOUT_PATTERNS = (
     r"upstream request timed out\.?", r"upstream timed out\.?", r"upstream timeout\.?",
 )
+RESPONSE_FORMAT_REMEDY = "Retry without response_format, or send the schema inside the prompt."
 DETAILS = {
     "upstream_timeout": "The upstream request timed out. Other configured routes may be tried.",
     "context_length_exceeded": "The request exceeds the upstream model's context window. Reduce the prompt or requested output; retrying the same request will not help.",
@@ -34,10 +35,22 @@ DETAILS = {
     "upstream_http_401": "The configured upstream credential was rejected; contact the gateway administrator.",
     "upstream_http_403": "Access was denied by the upstream; contact the gateway administrator.",
     "upstream_http_429": "The upstream is rate limited. Retry after a short delay.",
-    "response_format_unsupported": "The upstream model does not support the requested response_format (structured output). Retry without response_format, or send the schema inside the prompt.",
+    "response_format_unsupported": "The upstream model does not support the requested response_format (structured output). " + RESPONSE_FORMAT_REMEDY,
     "upstream_sse_error": "The upstream returned an error inside the response stream; no partial response was delivered.",
     "gateway_capacity": "The gateway is busy. Retry after one second.",
 }
+
+
+def response_format_detail(model, response_format, excluded):
+    """Detail for the preemptive refusal: model, requested type and excluded routes.
+
+    The remedy sentence is shared with DETAILS["response_format_unsupported"], so a
+    client gets one instruction whether the refusal was predicted or observed. Names
+    come from the config, never from an upstream body.
+    """
+    names = ", ".join(excluded) if excluded else "none"
+    return (f"No enabled route for model {model} serves response_format {response_format} "
+            f"(excluded by config: {names}). {RESPONSE_FORMAT_REMEDY}")
 
 
 def diagnostic(kind):

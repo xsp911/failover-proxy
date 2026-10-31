@@ -17,7 +17,7 @@ from starlette.requests import ClientDisconnect
 
 from . import __version__
 from .config import validate_config
-from .engine import Engine, GatewayError
+from .engine import Engine, GatewayError, route_response_formats
 from .store import Store
 from .a6_settings import A6Settings, verify as a6_verify_credentials
 from .a6_marketplace import tokens as a6_tokens, sellers as a6_sellers, MarketplaceError
@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 COOKIE = os.environ.get("FP_COOKIE_NAME") or "fp_admin_session_9097"
 
 
-def error(kind, status=400, request_id=None, detail=None, code=None, retry_after=None):
+def error(kind, status=400, request_id=None, detail=None, code=None, retry_after=None, param=None):
     # detail is produced by diagnostics' allowlisted explanations, never a raw
     # upstream body. Keep response/header output controlled and bounded.
     message = kind + (": " + detail[:512] if isinstance(detail, str) and detail else "")
@@ -42,7 +42,32 @@ def error(kind, status=400, request_id=None, detail=None, code=None, retry_after
         headers["Retry-After"] = str(retry_after if isinstance(retry_after, int) and 1 <= retry_after <= 3600 else 1)
     elif isinstance(retry_after, int) and 1 <= retry_after <= 3600:
         headers["Retry-After"] = str(retry_after)
-    return JSONResponse({"error": {"message": message, "type": "gateway_error", "code": code or kind}, **({"request_id": request_id} if request_id else {})}, status_code=status, headers=headers)
+    return JSONResponse({"error": {"message": message, "type": "gateway_error", "code": code or kind, **({"param": param} if param else {})}, **({"request_id": request_id} if request_id else {})}, status_code=status, headers=headers)
+
+
+# OpenAI clients can switch off a single request field by name. Only kinds whose
+# remedy is exactly "change this parameter" belong here.
+ERROR_PARAMS = {"response_format_unsupported": "response_format"}
+
+
+def aggregate_response_formats(model):
+    """A model's declared structured-output capability across its enabled routes.
+
+    None when no enabled route declares a passport (unknown). Otherwise the
+    intersection of the declared lists: the model as a whole serves only what every
+    declaring route serves. An empty list means every declaring route refuses both.
+    """
+    declared = []
+    for route in model.get("routes", []):
+        if not route.get("enabled"):
+            continue
+        formats = route_response_formats(route)
+        if formats is not None:
+            declared.append(set(formats))
+    if not declared:
+        return None
+    common = set.intersection(*declared)
+    return [name for name in ("json_schema", "json_object") if name in common]
 
 
 async def body_json(request, maximum):
@@ -534,7 +559,7 @@ def create_app(data_dir=None, transport=None):
     async def models(request:Request):
         key=await api_auth(request)
         config=await asyncio.to_thread(store.get_config)
-        return {"object":"list","data":[{"id":m["name"],"object":"model","created":0,"owned_by":"failover-proxy","supports_vision":m["supports_vision"],"context_length":m.get("context_length"),"max_output_tokens":m.get("max_output_tokens")}
+        return {"object":"list","data":[{"id":m["name"],"object":"model","created":0,"owned_by":"failover-proxy","supports_vision":m["supports_vision"],"context_length":m.get("context_length"),"max_output_tokens":m.get("max_output_tokens"),"supports_response_formats":aggregate_response_formats(m)}
             for m in config["models"] if m["enabled"] and (not key["models"] or m["name"] in key["models"])]}
 
     @app.post("/v1/chat/completions")
@@ -591,7 +616,7 @@ def create_app(data_dir=None, transport=None):
             try:
                 result=await task
             except GatewayError as e:
-                return error(e.kind,e.status,request_id,detail=e.detail)
+                return error(e.kind,e.status,request_id,detail=e.detail,param=ERROR_PARAMS.get(e.kind))
             headers={"X-Request-ID":request_id,"X-Buffered-Response":"true","X-Upstream":attribution.get("upstream","unknown")}
             if payload.get("stream",False):
                 replay=Replay(result.events,release)

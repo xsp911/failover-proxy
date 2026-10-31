@@ -4,23 +4,27 @@ from __future__ import annotations
 import asyncio
 import codecs
 import copy
-import ipaddress
 import json
 import socket
 import time
 import uuid
-from dataclasses import dataclass, field
 from collections import OrderedDict
 from contextlib import asynccontextmanager
-
-from .outbound_proxy import resolve_proxy
-from .proxy_transport import async_client, proxy_fingerprint
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 import httpx
 
 from .config import public_ip
-from .diagnostics import diagnostic, classify, read_error, upstream_label
+from .diagnostics import (
+    classify,
+    diagnostic,
+    read_error,
+    response_format_detail,
+    upstream_label,
+)
+from .outbound_proxy import resolve_proxy
+from .proxy_transport import async_client, proxy_fingerprint
 
 
 class GatewayError(Exception):
@@ -57,6 +61,28 @@ def response_format_of(payload):
         kind = value.get("type")
         return kind if isinstance(kind, str) else None
     return None
+
+
+STRUCTURED_FORMATS = ("json_schema", "json_object")
+
+
+def route_response_formats(route):
+    """A route's declared response_format passport, or None when it is unknown.
+
+    Absence means unknown and must keep today's best-effort passthrough. Unvalidated
+    config is tolerated the same way: a malformed value reads as unknown rather than
+    turning into a false refusal. Bool sugar mirrors validate_config.
+    """
+    if "supports_response_formats" not in route:
+        return None
+    value = route["supports_response_formats"]
+    if value is True:
+        return list(STRUCTURED_FORMATS)
+    if value is False:
+        return []
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        return None
+    return value
 
 
 def banner(text):
@@ -368,6 +394,23 @@ class Engine:
             if context_observation is not None:final['context_preflight']=context_observation
             providers = {x["id"]: x for x in config["providers"] if x["enabled"] and x.get("api_key")}
             routes = sorted((r for r in model["routes"] if r["enabled"] and r["provider_id"] in providers), key=lambda r:(providers[r["provider_id"]]["priority"],r["provider_id"]))
+            # A route whose declared passport lacks the requested structured-output
+            # type is excluded BEFORE cooldown: when capable routes merely cool down the
+            # honest answer is 503, not a request-parameter 400. No declared passport
+            # means unknown and keeps the old best-effort passthrough.
+            response_format = response_format_of(payload)
+            if response_format in STRUCTURED_FORMATS:
+                eligible, excluded = [], []
+                for route in routes:
+                    declared = route_response_formats(route)
+                    if declared is None or response_format in declared:
+                        eligible.append(route)
+                    else:
+                        excluded.append(upstream_label(providers[route["provider_id"]]))
+                if routes and not eligible:
+                    raise GatewayError("response_format_unsupported", 400, False,
+                                       response_format_detail(model["name"], response_format, excluded))
+                routes = eligible
             routes = [r for r in routes if self.cooldowns.get(r["provider_id"], 0) <= time.time()]
             if not routes:
                 raise GatewayError("no_available_provider", 503)

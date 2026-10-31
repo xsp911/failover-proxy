@@ -1,9 +1,10 @@
 """Strict config validation; capability metadata does not rewrite request bodies."""
 import ipaddress
 import re
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 ID = re.compile(r"[A-Za-z0-9_.:-]{1,160}\Z")
+RESPONSE_FORMATS = ("json_schema", "json_object")
 BOUNDS = {
     "request_timeout_s": (5, 900), "connect_timeout_s": (1, 60),
     "read_timeout_s": (1, 600), "cooldown_s": (1, 3600),
@@ -25,6 +26,23 @@ def identifier(value):
     return value
 
 
+def response_formats(value):
+    """Normalize a route's supports_response_formats passport.
+
+    `true`/`false` are sugar for both/none (the ergonomics of supports_vision);
+    an explicit list expresses "only json_object". Absence is unknown, not empty:
+    the validator only calls this when the field is present.
+    """
+    if value is True:
+        return list(RESPONSE_FORMATS)
+    if value is False:
+        return []
+    if not isinstance(value, list) or any(
+            not isinstance(item, str) or item not in RESPONSE_FORMATS for item in value):
+        raise ValueError("invalid_supports_response_formats")
+    return list(dict.fromkeys(value))
+
+
 def public_ip(value):
     addr = ipaddress.ip_address(value)
     return addr.is_global and not addr.is_multicast and not addr.is_unspecified
@@ -36,7 +54,7 @@ def base_url(value, private=False):
     if p.scheme not in ("https", "http") or not p.hostname or p.username or p.password or p.query or p.fragment:
         raise ValueError("invalid_base_url")
     try:
-        p.port
+        _ = p.port
     except ValueError:
         raise ValueError("invalid_base_url") from None
     host = p.hostname.lower()
@@ -94,7 +112,7 @@ def validate_config(value):
             raise ValueError("invalid_enabled")
         p = {"id": id, "name": text(row.get("name"), "provider_name", 100),
              "base_url": base_url(row.get("base_url"), private), "priority": priority, "enabled": row["enabled"]}
-        from .provider_policy import SERVICE_TIERS,PIN
+        from .provider_policy import PIN, SERVICE_TIERS
         mode=row.get('routing_mode','native');tier=row.get('service_tier') or None;pin=row.get('provider_pin') or None
         if mode not in ('native','openrouter'):raise ValueError('invalid_routing_mode')
         if tier is not None and (not isinstance(tier,str) or tier not in SERVICE_TIERS):raise ValueError('invalid_service_tier')
@@ -128,7 +146,10 @@ def validate_config(value):
             if pid not in ids or pid in seen or not isinstance(r.get("enabled"), bool):
                 raise ValueError("invalid_route")
             seen.add(pid)
-            rout.append({"provider_id": pid, "upstream_model": text(r.get("upstream_model"), "upstream_model", 200), "enabled": r["enabled"]})
+            route = {"provider_id": pid, "upstream_model": text(r.get("upstream_model"), "upstream_model", 200), "enabled": r["enabled"]}
+            if "supports_response_formats" in r:
+                route["supports_response_formats"] = response_formats(r["supports_response_formats"])
+            rout.append(route)
         model = {"id": id, "name": name, "enabled": row["enabled"], "supports_vision": row["supports_vision"], "routes": rout}
         for key, lo in (("context_length", 1000), ("max_output_tokens", 1)):
             if key not in row:
